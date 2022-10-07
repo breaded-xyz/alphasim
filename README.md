@@ -6,7 +6,7 @@ Alphasim is a minimal backtester and python version of the excellent <https://gi
 
 The inputs are the natural outputs of a typical quant research process: dataframes of asset prices and weights.
 
-Trade costs are optimised using a the 'trade buffer' heuristic (see the rsims repo).
+Trade costs are optimised using a 'trade buffer' heuristic (see the rsims repo).
 
 See the notebook in the vignettes directory for an example backtest of a classic 60/40 portfolio.
 
