@@ -1,8 +1,25 @@
 from alphasim.backtest import backtest
 
+import pandas as pd
+
 
 def test_backtest():
-    assert backtest(1, 2, 3, 4, 5) == 0
+    prices = pd.DataFrame()
+    weights = pd.DataFrame()
+    trade_buffer = 0.1
 
-def test_commission():
-    assert(True)
+    result = backtest(prices, weights, trade_buffer)
+
+    assert result is not None
+
+
+def test_backtest_long():
+    assert True
+
+
+def test_backtest_short():
+    assert True
+
+
+def test_backtest_portfolio6040():
+    assert True

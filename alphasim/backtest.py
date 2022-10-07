@@ -1,7 +1,150 @@
-def backtest(prices, weights, commission_func, trade_buffer, initial_capital):
+from typing import Callable
+import pandas as pd
 
-    # Join prices & weights with multi-index columns: (ticker, [price, target_weight, curr_weight, delta_weight]
-    # Add 'cash' ticker
-    # For every row, calc target
+CASH = "cash"
 
+
+def zero_commission(trade_size, trade_value):
     return 0
+
+
+def backtest(
+    prices: pd.DataFrame,
+    weights: pd.DataFrame,
+    trade_buffer: float,
+    do_target_buffer: bool = False,
+    commission_func: Callable[[float, float], float] = zero_commission,
+    initial_capital: float = 1000,
+    max_leverage: float = 1,
+    do_reinvest: bool = False,
+) -> pd.DataFrame:
+
+    # Ensure prices and weights have the same dimensions
+    assert prices.shape == weights.shape
+
+    # Add cash asset to track trade balance changes
+    # Use max leverage to set a target cash weight
+    prices[CASH] = 1
+    weights[CASH] = max_leverage - weights.sum(axis=1)
+
+    # Portfolio to record the units held of a ticker
+    port_df = pd.DataFrame(index=weights.index, columns=weights.columns)
+    port_df[:] = 0.0
+
+    # PNL to record mark-to-market for the portfolio
+    pnl_df = port_df.copy()
+
+    # Final collated result returned to caller
+    result_df = pd.DataFrame()
+
+    # Time periods for the given simulation
+    periods = len(weights)
+
+    # Step through periods in chronological order
+    for i in range(periods):
+
+        # Portfolio position at start of period
+        start_port = None
+
+        # First period initialize from initial capital
+        if i == 0:
+            start_port = port_df.iloc[0].copy()
+            start_port["cash"] = initial_capital
+        else:
+            start_port = port_df.iloc[i - 1].copy()
+
+        # Slice to get data for current period
+        price = prices.iloc[i]
+        pnl = pnl_df.iloc[i]
+
+        # Mark-to-market the portfolio
+        pnl = start_port * price
+        nav = pnl.sum()
+
+        # Stop simulation if rekt
+        if nav <= 0:
+            break
+
+        # Set the risk capital
+        risk_capital = initial_capital
+        if do_reinvest:
+            risk_capital = nav
+
+        # Calc current portfolio weight based on risk capital
+        curr_weight = pnl / risk_capital
+
+        # Calc delta of current to target weight
+        target_weight = weights.iloc[i].copy()
+        delta_weight = target_weight - curr_weight
+
+        # Based on buffer decide if trade should be made
+        do_trade = delta_weight.abs() > trade_buffer
+        do_trade[CASH] = False
+
+        # Default is to trade to the ideal target weight when commission is a fixed minimum or zero
+        # Trade to buffer when commission is a linear pct of trade value (e.g. crypto)
+        adj_target_weight = target_weight.copy()
+        if do_target_buffer:
+            adj_target_weight.loc[do_trade] = target_weight + trade_buffer
+
+        # If no trade indicated then set target weight to current weight
+        adj_target_weight.loc[~do_trade] = curr_weight
+
+        # Calc adjusted delta for final trade sizing
+        adj_delta_weight = adj_target_weight - curr_weight
+
+        # Calc trades required to achieve adjusted target weight
+        trade_value = adj_delta_weight * risk_capital
+        trade_size = trade_value / price
+
+        # Calc commission for the traded tickers using the given commission func
+        commission = trade_value.copy()
+        commission[do_trade] = [
+            commission_func(x, y) for x, y in zip(trade_size, trade_value)
+        ]
+
+        # Calc post trade port positions
+        # Account for changes to cash from trade activity
+        end_port = start_port.copy()
+        end_port += trade_size
+        end_port[CASH] -= trade_value.loc[do_trade].sum()
+        end_port[CASH] -= commission.loc[do_trade].sum()
+        port_df.iloc[i] = end_port
+
+        # Append data for this time period to the result
+        series = pd.concat(
+            [
+                price,
+                start_port,
+                pnl,
+                curr_weight,
+                target_weight,
+                delta_weight,
+                do_trade,
+                adj_target_weight,
+                adj_delta_weight,
+                trade_value,
+                trade_size,
+                end_port,
+            ],
+            keys=[
+                "price",
+                "start_portfolio",
+                "pnl",
+                "current_weight",
+                "target_weight",
+                "delta_weight",
+                "do_trade",
+                "adj_target_weight",
+                "adj_delta_weight",
+                "trade_value",
+                "trade_size",
+                "end_portfolio",
+            ],
+            axis=1,
+        )
+        series["datetime"] = weights.index[i]
+        series = series.set_index(["datetime", series.index])
+        result_df = pd.concat([result_df, series])
+
+    return result_df
