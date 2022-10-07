@@ -37,7 +37,22 @@ def test_backtest_short():
     assert result.loc[1, :]["exposure"].sum() == 500
 
 
-def test_backtest_tradetobuffer():
+def test_backtest_dolimittradesize():
+
+    prices = pd.DataFrame([100, 300, 300], columns=["Acme"])
+    weights = pd.DataFrame([0.5, 1, 1], columns=["Acme"])
+    trade_buffer = 0.25
+    result = backtest(prices, weights, trade_buffer, do_limit_trade_size=True)
+
+    # When opening a new position (current weight is zero) ignore trade buffer
+    assert result.loc[(0, CASH)]["end_portfolio"] == 500
+    assert result.loc[(0, "Acme")]["end_portfolio"] == 5
+
+    # Delta of current to target weight is now 0.5. Our buffer is 0.25.
+    # We limit our trade size to the minimum required to stay within the buffer zone.
+    assert result.loc[(1, "Acme")]["adj_target_weight"] == 1.25
+    assert result.loc[(1, "Acme")]["adj_delta_weight"] == -0.25
+
     assert True
 
 
