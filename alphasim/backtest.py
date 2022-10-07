@@ -46,9 +46,8 @@ def backtest(
     for i in range(periods):
 
         # Portfolio position at start of period
-        start_port = start_port = port_df.iloc[0].copy(deep=True)
-
-        # First period initialize from initial capital
+        # Initialize from initial capital if first period
+        start_port = port_df.iloc[0].copy(deep=True)
         if i == 0:
             start_port["cash"] = initial_capital
         else:
