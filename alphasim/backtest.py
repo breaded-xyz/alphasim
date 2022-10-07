@@ -12,10 +12,9 @@ def backtest(
     prices: pd.DataFrame,
     weights: pd.DataFrame,
     trade_buffer: float,
-    do_target_buffer: bool = False,
+    do_limit_trade_size: bool = False,
     commission_func: Callable[[float, float], float] = zero_commission,
     initial_capital: float = 1000,
-    max_leverage: float = 1,
     do_reinvest: bool = False,
 ) -> pd.DataFrame:
 
@@ -23,16 +22,15 @@ def backtest(
     assert prices.shape == weights.shape
 
     # Add cash asset to track trade balance changes
-    # Use max leverage to set a target cash weight
     prices[CASH] = 1
-    weights[CASH] = max_leverage - weights.sum(axis=1)
+    weights[CASH] = 1 - weights.sum(axis=1)
 
     # Portfolio to record the units held of a ticker
     port_df = pd.DataFrame(index=weights.index, columns=weights.columns)
     port_df[:] = 0.0
 
-    # PNL to record mark-to-market for the portfolio
-    pnl_df = port_df.copy()
+    # Track mark-to-market for the portfolio
+    exposure_df = port_df.copy()
 
     # Final collated result returned to caller
     result_df = pd.DataFrame()
@@ -55,11 +53,11 @@ def backtest(
 
         # Slice to get data for current period
         price = prices.iloc[i]
-        pnl = pnl_df.iloc[i]
+        exposure = exposure_df.iloc[i]
 
         # Mark-to-market the portfolio
-        pnl = start_port * price
-        nav = pnl.sum()
+        exposure = start_port * price
+        nav = exposure.sum()
 
         # Stop simulation if rekt
         if nav <= 0:
@@ -71,7 +69,7 @@ def backtest(
             risk_capital = nav
 
         # Calc current portfolio weight based on risk capital
-        curr_weight = pnl / risk_capital
+        curr_weight = exposure / risk_capital
 
         # Calc delta of current to target weight
         target_weight = weights.iloc[i].copy()
@@ -84,7 +82,7 @@ def backtest(
         # Default is to trade to the ideal target weight when commission is a fixed minimum or zero
         # Trade to buffer when commission is a linear pct of trade value (e.g. crypto)
         adj_target_weight = target_weight.copy()
-        if do_target_buffer:
+        if do_limit_trade_size:
             adj_target_weight.loc[do_trade] = target_weight + trade_buffer
 
         # If no trade indicated then set target weight to current weight
@@ -106,7 +104,7 @@ def backtest(
         # Calc post trade port positions
         # Account for changes to cash from trade activity
         end_port = start_port.copy()
-        end_port += trade_size
+        end_port[do_trade] += trade_size[do_trade]
         end_port[CASH] -= trade_value.loc[do_trade].sum()
         end_port[CASH] -= commission.loc[do_trade].sum()
         port_df.iloc[i] = end_port
@@ -116,7 +114,7 @@ def backtest(
             [
                 price,
                 start_port,
-                pnl,
+                exposure,
                 curr_weight,
                 target_weight,
                 delta_weight,
@@ -130,7 +128,7 @@ def backtest(
             keys=[
                 "price",
                 "start_portfolio",
-                "pnl",
+                "exposure",
                 "current_weight",
                 "target_weight",
                 "delta_weight",
