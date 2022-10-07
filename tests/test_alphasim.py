@@ -1,4 +1,5 @@
 from alphasim.backtest import backtest, CASH
+from alphasim.stats import EQUITY
 
 import pandas as pd
 
@@ -29,12 +30,12 @@ def test_backtest_short():
     assert result.loc[(0, "Acme")]["end_portfolio"] == -100
 
     # Asset mark-to-market expsoure is negative
-    assert result.loc[(1, CASH)]["exposure"] == 2000
-    assert result.loc[(1, "Acme")]["exposure"] == -1500
+    assert result.loc[(1, CASH)][EQUITY] == 2000
+    assert result.loc[(1, "Acme")][EQUITY] == -1500
 
     # Cash and asset expsoure then correctly net off
     # In this case the price increased and we incurred a loss
-    assert result.loc[1, :]["exposure"].sum() == 500
+    assert result.loc[1, :][EQUITY].sum() == 500
 
 
 def test_backtest_dolimittradesize():

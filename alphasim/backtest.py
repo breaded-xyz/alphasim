@@ -2,7 +2,7 @@ from typing import Callable
 import pandas as pd
 
 CASH = "cash"
-
+EQUITY = "equity"
 
 def zero_commission(trade_size, trade_value):
     return 0
@@ -34,7 +34,7 @@ def backtest(
     port_df[:] = 0.0
 
     # Track mark-to-market for the portfolio
-    exposure_df = port_df.copy(deep=True)
+    equity_df = port_df.copy()
 
     # Final collated result returned to caller
     result_df = pd.DataFrame()
@@ -47,19 +47,17 @@ def backtest(
 
         # Portfolio position at start of period
         # Initialize from initial capital if first period
-        start_port = port_df.iloc[0].copy(deep=True)
+        start_port = port_df.iloc[i - 1].copy()
         if i == 0:
             start_port["cash"] = initial_capital
-        else:
-            start_port = port_df.iloc[i - 1].copy(deep=True)
 
         # Slice to get data for current period
         price = prices.iloc[i]
-        exposure = exposure_df.iloc[i]
+        equity = equity_df.iloc[i]
 
         # Mark-to-market the portfolio
-        exposure = start_port * price
-        nav = exposure.sum()
+        equity = start_port * price
+        nav = equity.sum()
 
         # Stop simulation if rekt
         if nav <= 0:
@@ -71,10 +69,10 @@ def backtest(
             risk_capital = nav
 
         # Calc current portfolio weight based on risk capital
-        curr_weight = exposure / risk_capital
+        curr_weight = equity / risk_capital
 
         # Calc delta of current to target weight
-        target_weight = weights.iloc[i].copy(deep=True)
+        target_weight = weights.iloc[i].copy()
         delta_weight = target_weight - curr_weight
 
         # Based on buffer decide if trade should be made
@@ -84,10 +82,10 @@ def backtest(
         # Default is to trade to the ideal target weight when commission is a fixed minimum or zero
         # Trade to buffer when commission is a linear pct of trade value (e.g. crypto)
         # Always trade to target weight when opening new poistion (i.e. current weight is zero)
-        adj_target_weight = target_weight.copy(deep=True)
+        adj_target_weight = target_weight.copy()
         if do_limit_trade_size:
             adj_target_weight.loc[do_trade] += delta_weight.abs() - trade_buffer
-            adj_target_weight.loc[curr_weight == 0] = target_weight.copy(deep=True)
+            adj_target_weight.loc[curr_weight == 0] = target_weight.copy()
 
         # If no trade indicated then set target weight to current weight
         adj_target_weight.loc[~do_trade] = curr_weight
@@ -100,14 +98,14 @@ def backtest(
         trade_size = trade_value / price
 
         # Calc commission for the traded tickers using the given commission func
-        commission = trade_value.copy(deep=True)
+        commission = trade_value.copy()
         commission[do_trade] = [
             commission_func(x, y) for x, y in zip(trade_size, trade_value)
         ]
 
         # Calc post trade port positions
         # Account for changes to cash from trade activity
-        end_port = start_port.copy(deep=True)
+        end_port = start_port.copy()
         end_port[do_trade] += trade_size[do_trade]
         end_port[CASH] -= trade_value.loc[do_trade].sum()
         end_port[CASH] -= commission.loc[do_trade].sum()
@@ -118,7 +116,7 @@ def backtest(
             [
                 price,
                 start_port,
-                exposure,
+                equity,
                 curr_weight,
                 target_weight,
                 delta_weight,
@@ -127,12 +125,13 @@ def backtest(
                 adj_delta_weight,
                 trade_value,
                 trade_size,
+                commission,
                 end_port,
             ],
             keys=[
                 "price",
                 "start_portfolio",
-                "exposure",
+                "equity",
                 "current_weight",
                 "target_weight",
                 "delta_weight",
@@ -141,6 +140,7 @@ def backtest(
                 "adj_delta_weight",
                 "trade_value",
                 "trade_size",
+                "commission",
                 "end_portfolio",
             ],
             axis=1,

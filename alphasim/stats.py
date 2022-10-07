@@ -1,3 +1,5 @@
+from alphasim.backtest import EQUITY
+
 import numpy as np
 import pandas as pd
 import ffn
@@ -7,7 +9,7 @@ TRADING_DAYS_YEAR = 252
 
 
 def _pnl(result: pd.DataFrame) -> pd.DataFrame:
-    df = result["exposure"].astype("float").groupby(["datetime"]).sum().to_frame()
+    df = result[EQUITY].astype("float").groupby(["datetime"]).sum().to_frame()
     df = df.rename(columns={"exposure": "portfolio"})
     return df
 
