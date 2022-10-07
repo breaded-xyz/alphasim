@@ -42,12 +42,15 @@ def backtest(
     # Time periods for the given simulation
     periods = len(weights)
 
+    # Default is not to re-invest profits and fix risk apital at initial 
+    risk_capital = initial_capital
+
     # Step through periods in chronological order
     for i in range(periods):
 
         # Portfolio position at start of period
-        # Initialize from initial capital if first period
-        start_port = port_df.iloc[i - 1].copy()
+        # Initialize from starting capital if first period
+        start_port = port_df.iloc[i - 1]
         if i == 0:
             start_port["cash"] = initial_capital
 
@@ -64,7 +67,6 @@ def backtest(
             break
 
         # Set the risk capital
-        risk_capital = float(initial_capital)
         if do_reinvest:
             risk_capital = nav
 
@@ -72,7 +74,7 @@ def backtest(
         curr_weight = equity / risk_capital
 
         # Calc delta of current to target weight
-        target_weight = weights.iloc[i].copy()
+        target_weight = weights.iloc[i]
         delta_weight = target_weight - curr_weight
 
         # Based on buffer decide if trade should be made
@@ -85,7 +87,7 @@ def backtest(
         adj_target_weight = target_weight.copy()
         if do_limit_trade_size:
             adj_target_weight.loc[do_trade] += delta_weight.abs() - trade_buffer
-            adj_target_weight.loc[curr_weight == 0] = target_weight.copy()
+            adj_target_weight.loc[curr_weight == 0] = target_weight
 
         # If no trade indicated then set target weight to current weight
         adj_target_weight.loc[~do_trade] = curr_weight
