@@ -21,5 +21,25 @@ def test_backtest_short():
     assert True
 
 
+def test_backtest_tradetobuffer():
+    assert True
+
+
+def test_backtest_tradetoideal():
+    assert True
+
+
+def test_backtest_mincommission():
+    assert True
+
+
+def test_backtest_leverage():
+    assert True
+
+
+def test_backtest_reinvest():
+    assert True
+
+
 def test_backtest_portfolio6040():
     assert True
