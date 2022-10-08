@@ -1,8 +1,25 @@
 from typing import Callable
+
 import pandas as pd
 
 CASH = "cash"
 EQUITY = "equity"
+RESULT_KEYS = [
+    "price",
+    "start_portfolio",
+    EQUITY,
+    "current_weight",
+    "target_weight",
+    "delta_weight",
+    "do_trade",
+    "adj_target_weight",
+    "adj_delta_weight",
+    "trade_value",
+    "trade_size",
+    "commission",
+    "end_portfolio",
+]
+
 
 def zero_commission(trade_size, trade_value):
     return 0
@@ -19,11 +36,8 @@ def backtest(
 ) -> pd.DataFrame:
 
     # Ensure prices and weights have the same dimensions
-    assert prices.shape == weights.shape
-
-    # Coerce to floats
-    prices = prices.astype("float")
-    weights = weights.astype("float")
+    if prices.shape != weights.shape:
+        raise ValueError()
 
     # Add cash asset to track trade balance changes
     prices[CASH] = 1.0
@@ -42,7 +56,7 @@ def backtest(
     # Time periods for the given simulation
     periods = len(weights)
 
-    # Default is not to re-invest profits and fix risk apital at initial 
+    # Default is not to re-invest profits and fix risk capital at initial capital
     risk_capital = initial_capital
 
     # Step through periods in chronological order
@@ -52,7 +66,7 @@ def backtest(
         # Initialize from starting capital if first period
         start_port = port_df.iloc[i - 1]
         if i == 0:
-            start_port["cash"] = initial_capital
+            start_port[CASH] = initial_capital
 
         # Slice to get data for current period
         price = prices.iloc[i]
@@ -130,21 +144,7 @@ def backtest(
                 commission,
                 end_port,
             ],
-            keys=[
-                "price",
-                "start_portfolio",
-                "equity",
-                "current_weight",
-                "target_weight",
-                "delta_weight",
-                "do_trade",
-                "adj_target_weight",
-                "adj_delta_weight",
-                "trade_value",
-                "trade_size",
-                "commission",
-                "end_portfolio",
-            ],
+            keys=RESULT_KEYS,
             axis=1,
         )
         series["datetime"] = weights.index[i]
