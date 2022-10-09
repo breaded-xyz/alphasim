@@ -1,4 +1,4 @@
-from alphasim.backtest import EQUITY, CASH
+import alphasim.backtest as bt
 
 import numpy as np
 import pandas as pd
@@ -9,17 +9,21 @@ TRADING_DAYS_YEAR = 252
 
 
 def _pnl(result: pd.DataFrame) -> pd.DataFrame:
-    df = result[EQUITY].astype("float").groupby(["datetime"]).sum().to_frame()
+    df = result[bt.EQUITY].astype("float").groupby(["datetime"]).sum().to_frame()
     df = df.rename(columns={"exposure": "portfolio"})
     return df
 
 
 def calc_stats(result: pd.DataFrame) -> pd.DataFrame:
     df = ffn.calc_stats(_pnl(result)).stats.T
-    df['initial'] = result.loc[(slice(None),CASH),EQUITY][0]
-    df['final'] = result[EQUITY].groupby('datetime').sum()[-1]
-    df['profit'] = df['final'] - df['initial']
-    return df
+    grouped_result_df = result.groupby("datetime").sum()
+    df["initial"] = grouped_result_df[bt.EQUITY][0]
+    df["final"] = grouped_result_df[bt.EQUITY][-1]
+    df["profit"] = df["final"] - df["initial"]
+    df["commission"] = grouped_result_df["commission"].sum()
+    df["cost_profit_pct"] = df["commission"] / df["profit"]
+    df["trade_count"] = result.loc[result["do_trade"] == True].count()
+    return df.T
 
 
 def calc_log_returns(result: pd.DataFrame) -> pd.DataFrame:
