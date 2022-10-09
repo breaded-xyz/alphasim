@@ -1,4 +1,4 @@
-from alphasim.backtest import EQUITY
+from alphasim.backtest import EQUITY, CASH
 
 import numpy as np
 import pandas as pd
@@ -15,7 +15,11 @@ def _pnl(result: pd.DataFrame) -> pd.DataFrame:
 
 
 def calc_stats(result: pd.DataFrame) -> pd.DataFrame:
-    return ffn.calc_stats(_pnl(result)).stats
+    df = ffn.calc_stats(_pnl(result)).stats.T
+    df['initial'] = result.loc[(slice(None),CASH),EQUITY][0]
+    df['final'] = result[EQUITY].groupby('datetime').sum()[-1]
+    df['profit'] = df['final'] - df['initial']
+    return df
 
 
 def calc_log_returns(result: pd.DataFrame) -> pd.DataFrame:
