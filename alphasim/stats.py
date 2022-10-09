@@ -9,14 +9,13 @@ TRADING_DAYS_YEAR = 252
 
 
 def _pnl(result: pd.DataFrame) -> pd.DataFrame:
-    df = result[bt.EQUITY].astype("float").groupby(["datetime"]).sum().to_frame()
-    df = df.rename(columns={"exposure": "portfolio"})
+    df = result[bt.EQUITY].astype("float").groupby(level=0).sum().to_frame()
     return df
 
 
 def calc_stats(result: pd.DataFrame) -> pd.DataFrame:
     df = ffn.calc_stats(_pnl(result)).stats.T
-    grouped_result_df = result.groupby("datetime").sum()
+    grouped_result_df = result.groupby(level=0).sum()
     df["initial"] = grouped_result_df[bt.EQUITY][0]
     df["final"] = grouped_result_df[bt.EQUITY][-1]
     df["profit"] = df["final"] - df["initial"]

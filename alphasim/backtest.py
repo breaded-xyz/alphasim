@@ -1,16 +1,18 @@
 from typing import Callable
 
+import itertools as it
+import numpy as np
 import pandas as pd
 
 CASH = "cash"
 EQUITY = "equity"
 RESULT_KEYS = [
     "price",
-    "start_portfolio",
+    # "start_portfolio",
     EQUITY,
-    "current_weight",
-    "target_weight",
-    "delta_weight",
+    # "current_weight",
+    # "target_weight",
+    # "delta_weight",
     "do_trade",
     "adj_target_weight",
     "adj_delta_weight",
@@ -51,7 +53,8 @@ def backtest(
     equity_df = port_df.copy()
 
     # Final collated result returned to caller
-    result_df = pd.DataFrame()
+    midx = pd.MultiIndex.from_product([weights.index, weights.columns])
+    result_df = pd.DataFrame(index=midx, columns=RESULT_KEYS)
 
     # Time periods for the given simulation
     periods = len(weights)
@@ -128,14 +131,14 @@ def backtest(
         port_df.iloc[i] = end_port
 
         # Append data for this time period to the result
-        series = pd.concat(
+        result_df.loc[weights.index[i]] = np.array(
             [
                 price,
-                start_port,
+                # start_port,
                 equity,
-                curr_weight,
-                target_weight,
-                delta_weight,
+                # curr_weight,
+                # target_weight,
+                # delta_weight,
                 do_trade,
                 adj_target_weight,
                 adj_delta_weight,
@@ -143,12 +146,7 @@ def backtest(
                 trade_size,
                 commission,
                 end_port,
-            ],
-            keys=RESULT_KEYS,
-            axis=1,
-        )
-        series["datetime"] = weights.index[i]
-        series = series.set_index(["datetime", series.index])
-        result_df = pd.concat([result_df, series])
+            ]
+        ).T
 
     return result_df
