@@ -1,6 +1,5 @@
 from typing import Callable
 
-import itertools as it
 import numpy as np
 import pandas as pd
 
