@@ -8,11 +8,7 @@ CASH = "cash"
 EQUITY = "equity"
 RESULT_KEYS = [
     "price",
-    # "start_portfolio",
     EQUITY,
-    # "current_weight",
-    # "target_weight",
-    # "delta_weight",
     "do_trade",
     "adj_target_weight",
     "adj_delta_weight",
@@ -134,11 +130,7 @@ def backtest(
         result_df.loc[weights.index[i]] = np.array(
             [
                 price,
-                # start_port,
                 equity,
-                # curr_weight,
-                # target_weight,
-                # delta_weight,
                 do_trade,
                 adj_target_weight,
                 adj_delta_weight,
