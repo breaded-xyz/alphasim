@@ -7,5 +7,5 @@ setup(
     author="Rich Klee",
     author_email="hello@richklee.xyz",
     url="https://github.com/thecolngroup/alphasim",
-    py_modules=["backtest", "stats"],
+    packages=["alphasim"],
 )
