@@ -1,8 +1,8 @@
-import alphasim.backtest as bt
-
 import numpy as np
 import pandas as pd
 import ffn
+
+import alphasim.backtest as bt
 
 VOLA_EWMA_ALPHA = 1.0 - 0.94
 TRADING_DAYS_YEAR = 252
