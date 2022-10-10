@@ -1,8 +1,8 @@
 # Alphasim
 
-Alphasim is a minimalist backtester inspired by vthe excellent <https://github.com/Robot-Wealth/rsims>.
+Alphasim is a minimalist backtester inspired by the excellent <https://github.com/Robot-Wealth/rsims>.
 
-The backtest inputs are the natural outputs of a typical quant research process: dataframe's of asset prices and weights.
+The backtest inputs are the natural outputs of a typical quant research process: a dataframe of asset prices and weights.
 
 Trade costs are optimised using a 'trade buffer' heuristic (see the rsims repo).
 
