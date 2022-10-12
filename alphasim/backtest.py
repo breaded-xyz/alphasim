@@ -37,7 +37,7 @@ def backtest(
 
     # Add cash asset to track trade balance changes
     prices[CASH] = 1.0
-    weights[CASH] = 1.0 - weights.sum(axis=1)
+    weights[CASH] = 1.0 - weights.abs().sum(axis=1)
 
     # Portfolio to record the units held of a ticker
     port_df = pd.DataFrame(index=weights.index, columns=weights.columns, dtype="float")
