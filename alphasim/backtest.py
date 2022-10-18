@@ -40,11 +40,10 @@ def backtest(
     weights[CASH] = 1.0 - weights.abs().sum(axis=1)
 
     # Portfolio to record the units held of a ticker
-    port_df = pd.DataFrame(index=weights.index, columns=weights.columns, dtype="float")
-    port_df[:] = 0.0
+    port_df = _fillcopy(weights,0)
 
     # Track mark-to-market for the portfolio
-    equity_df = port_df.copy()
+    equity_df = _fillcopy(port_df,0)
 
     # Final collated result returned to caller
     midx = pd.MultiIndex.from_product([weights.index, weights.columns])
@@ -89,7 +88,7 @@ def backtest(
         delta_weight = target_weight - curr_weight
 
         # Based on buffer decide if trade should be made
-        do_trade = (delta_weight.abs() > trade_buffer) | (curr_weight == 0)
+        do_trade = delta_weight.abs() > trade_buffer
         do_trade[CASH] = False
 
         # Default is to trade to the ideal target weight when commission is a fixed minimum or zero
@@ -97,11 +96,10 @@ def backtest(
         # Always trade to target weight when opening new poistion (i.e. current weight is zero)
         adj_target_weight = target_weight.copy()
         if do_limit_trade_size:
-            adj_target_weight.loc[do_trade] += delta_weight.abs() - trade_buffer
-            adj_target_weight.loc[curr_weight == 0] = target_weight
+            adj_target_weight[do_trade] = target_weight - np.copysign(trade_buffer, target_weight)
 
         # If no trade indicated then set target weight to current weight
-        adj_target_weight.loc[~do_trade] = curr_weight
+        adj_target_weight[~do_trade] = curr_weight
 
         # Calc adjusted delta for final trade sizing
         adj_delta_weight = adj_target_weight - curr_weight
@@ -140,3 +138,7 @@ def backtest(
         ).T
 
     return result_df
+
+
+def _fillcopy(df, x=0.0):
+    return df.copy(deep=True).apply(lambda y: x, result_type="broadcast")
