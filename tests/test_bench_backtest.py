@@ -1,8 +1,9 @@
-import alphasim.backtest as bt
 import numpy as np
 import pandas as pd
 import os
 
+import alphasim.backtest as bt
+import alphasim.stats as stats
 
 def test_bench_backtest():
     prices = _load_test_data("price_sample.csv")
@@ -10,8 +11,9 @@ def test_bench_backtest():
     tb = 0.1
 
     result = bt.backtest(prices, weights, trade_buffer=tb)
-
     assert result is not None
+
+    print(stats.calc_stats(result))
 
 
 def _load_test_data(filename):
