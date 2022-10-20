@@ -108,9 +108,7 @@ def backtest(
         # Always trade to target weight when opening new poistion (i.e. current weight is zero)
         adj_target_weight = target_weight.copy()
         if do_limit_trade_size:
-            adj_target_weight[do_trade] = target_weight - np.copysign(
-                trade_buffer, target_weight
-            )
+            adj_target_weight[do_trade] = target_weight - np.copysign(trade_buffer, target_weight)
 
         # If no trade indicated then set target weight to current weight
         adj_target_weight[~do_trade] = curr_weight
