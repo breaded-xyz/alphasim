@@ -15,7 +15,8 @@ def calc_stats(result: pd.DataFrame) -> pd.DataFrame:
     
     sum_df = result.groupby(level=0).sum()
     days = len(sum_df)
-    ret_df = calc_log_returns(result)
+    years = days/TRADING_DAYS_YEAR
+    ret_df = sum_df[bt.EQUITY].pct_change()
 
     df = pd.DataFrame(index=["result"])
     df["start"] = sum_df.index.values[0]
@@ -23,8 +24,8 @@ def calc_stats(result: pd.DataFrame) -> pd.DataFrame:
     df["initial"] = sum_df[bt.EQUITY].iloc[0]
     df["final"] = sum_df[bt.EQUITY].iloc[-1]
     df["profit"] = df["final"] - df["initial"]
-    df["cagr"] = (df["final"] / df["initial"]) ** (365/days) - 1
-    df["ann_volatility"] = ret_df[bt.EQUITY].std() * np.sqrt(TRADING_DAYS_YEAR)
+    df["cagr"] = (df["final"] / df["initial"]) ** (1/years) - 1
+    df["ann_volatility"] = ret_df.std() * np.sqrt(TRADING_DAYS_YEAR)
     df["ann_sharpe"] = df["cagr"] / df["ann_volatility"]
     df["commission"] = sum_df["commission"].sum()
     df["funding"] = sum_df["funding"].sum()
