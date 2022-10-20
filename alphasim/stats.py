@@ -17,17 +17,19 @@ def calc_stats(result: pd.DataFrame) -> pd.DataFrame:
     days = len(sum_df)
     ret_df = calc_log_returns(result)
 
-    df = pd.DataFrame()
-    df["initial"] = sum_df[bt.EQUITY][0]
-    df["final"] = sum_df[bt.EQUITY][-1]
+    df = pd.DataFrame(index=["result"])
+    df["start"] = sum_df.index.values[0]
+    df["end"] = sum_df.index.values[-1]
+    df["initial"] = sum_df[bt.EQUITY].iloc[0]
+    df["final"] = sum_df[bt.EQUITY].iloc[-1]
     df["profit"] = df["final"] - df["initial"]
     df["cagr"] = (df["final"] / df["initial"]) ** (365/days) - 1
-    df["ann_volatility"] = ret_df.std() * np.sqrt(TRADING_DAYS_YEAR)
-    df["sharpe"] = df["cagr"] / df["ann_volatility"]
+    df["ann_volatility"] = ret_df[bt.EQUITY].std() * np.sqrt(TRADING_DAYS_YEAR)
+    df["ann_sharpe"] = df["cagr"] / df["ann_volatility"]
     df["commission"] = sum_df["commission"].sum()
     df["funding"] = sum_df["funding"].sum()
     df["cost_profit_pct"] = (df["commission"] + df["funding"]) / df["profit"]
-    df["trade_count"] = result.loc[result["do_trade"] == True].count()
+    df["trade_count"] = result["do_trade"].sum()
 
     return df.T
 
