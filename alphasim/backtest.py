@@ -14,7 +14,7 @@ RESULT_KEYS = [
     "adj_delta_weight",
     "trade_value",
     "trade_size",
-    "funding",
+    #"funding",
     "commission",
     "end_portfolio",
 ]
@@ -138,7 +138,7 @@ def backtest(
         end_port[do_trade] += trade_size[do_trade]
         end_port[CASH] -= trade_value.loc[do_trade].sum()
         end_port[CASH] -= commission.loc[do_trade].sum()
-        end_port[CASH] += funding.sum()
+        #end_port[CASH] += funding.sum()
         port_df.iloc[i] = end_port
 
         # Append data for this time period to the result
@@ -151,7 +151,7 @@ def backtest(
                 adj_delta_weight,
                 trade_value,
                 trade_size,
-                funding,
+                #funding,
                 commission,
                 end_port,
             ]
