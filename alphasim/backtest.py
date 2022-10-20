@@ -27,7 +27,8 @@ def fixed_commission(trade_size, trade_value, fixed_commission):
     return fixed_commission
 
 def linear_pct_commission(trade_size, trade_value, pct_commission):
-    return abs(trade_value) * pct_commission
+    commission = abs(trade_value) * pct_commission
+    return commission
 
 def tiered_pct_commission(trade_size, trade_value, min_fee_per_order, fee_per_unit, max_pct_per_order):
     commission = np.min([abs(trade_size) * fee_per_unit, abs(trade_value) * max_pct_per_order])
@@ -148,7 +149,7 @@ def backtest(
         end_port = start_port.copy()
         end_port[do_trade] += trade_size[do_trade]
         end_port[CASH] -= trade_value.loc[do_trade].sum()
-        end_port[CASH] += commission.loc[do_trade].sum()
+        end_port[CASH] += -commission.loc[do_trade].sum()
         end_port[CASH] += funding.sum()
         port_df.iloc[i] = end_port
 
