@@ -50,10 +50,10 @@ def backtest(
     funding_rates[CASH] = 0
 
     # Portfolio to record the units held of a ticker
-    port_df = util.fillcopy(weights,0)
+    port_df = util.fillcopy(weights, 0)
 
     # Track mark-to-market for the portfolio
-    equity_df = util.fillcopy(port_df,0)
+    equity_df = util.fillcopy(port_df, 0)
 
     # Final collated result returned to caller
     midx = pd.MultiIndex.from_product([weights.index, weights.columns])
@@ -107,7 +107,9 @@ def backtest(
         # Always trade to target weight when opening new poistion (i.e. current weight is zero)
         adj_target_weight = target_weight.copy()
         if do_limit_trade_size:
-            adj_target_weight[do_trade] = target_weight - np.copysign(trade_buffer, target_weight)
+            adj_target_weight[do_trade] = target_weight - np.copysign(
+                trade_buffer, target_weight
+            )
 
         # If no trade indicated then set target weight to current weight
         adj_target_weight[~do_trade] = curr_weight
@@ -119,8 +121,12 @@ def backtest(
         trade_value = adj_delta_weight * risk_capital
         trade_size = trade_value / price
 
+        # Calc funding payments
+        funding = util.fillcopy(equity)
+        funding = abs(equity) * funding_rate
+
         # Calc commission for the traded tickers using the given commission func
-        commission = trade_value.copy()
+        commission = util.fillcopy(trade_value)
         commission[do_trade] = [
             commission_func(x, y) for x, y in zip(trade_size, trade_value)
         ]
@@ -131,11 +137,10 @@ def backtest(
         end_port[do_trade] += trade_size[do_trade]
         end_port[CASH] -= trade_value.loc[do_trade].sum()
         end_port[CASH] -= commission.loc[do_trade].sum()
-        end_port[CASH] += (equity * funding_rate).sum()
+        end_port[CASH] += funding.sum()
         port_df.iloc[i] = end_port
 
-        # Append data for this time period to the result
-        result_df.loc[weights.index[i]] = np.array(
+        period_result = np.array(
             [
                 price,
                 equity,
@@ -144,9 +149,13 @@ def backtest(
                 adj_delta_weight,
                 trade_value,
                 trade_size,
+                # funding,
                 commission,
                 end_port,
             ]
-        ).T
+        )
+
+        # Append data for this time period to the result
+        result_df.loc[weights.index[i]] = period_result.T
 
     return result_df

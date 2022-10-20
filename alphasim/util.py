@@ -1,2 +1,12 @@
+import pandas as pd
+
+
 def fillcopy(df, x=0.0):
-    return df.copy(deep=True).apply(lambda y: x, result_type="broadcast")
+
+    match type(df):
+        case pd.DataFrame:
+            return df.copy(deep=True).apply(lambda y: x, result_type="broadcast")
+        case pd.Series:
+            return df.copy(deep=True).apply(lambda y: x)
+
+    return None
