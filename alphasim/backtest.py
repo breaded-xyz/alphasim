@@ -143,13 +143,14 @@ def backtest(
         commission[do_trade] = [
             commission_func(x, y) for x, y in zip(trade_size, trade_value)
         ]
+        commission = -commission
 
         # Calc post trade port positions
         # Account for changes to cash from trade activity
         end_port = start_port.copy()
         end_port[do_trade] += trade_size[do_trade]
         end_port[CASH] -= trade_value.loc[do_trade].sum()
-        end_port[CASH] += -commission.loc[do_trade].sum()
+        end_port[CASH] += commission.loc[do_trade].sum()
         end_port[CASH] += funding.sum()
         port_df.iloc[i] = end_port
 
