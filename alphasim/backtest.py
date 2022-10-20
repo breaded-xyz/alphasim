@@ -2,7 +2,7 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 
-import alphasim.util as util
+from alphasim.util import like
 
 CASH = "cash"
 EQUITY = "equity"
@@ -14,6 +14,7 @@ RESULT_KEYS = [
     "adj_delta_weight",
     "trade_value",
     "trade_size",
+    "funding",
     "commission",
     "end_portfolio",
 ]
@@ -39,7 +40,7 @@ def backtest(
         raise ValueError("shape of prices must match weights")
 
     if funding_rates is None:
-        funding_rates = util.fillcopy(weights)
+        funding_rates = like(weights)
 
     if funding_rates.shape != weights.shape:
         raise ValueError("shape of funding_rates must match weights")
@@ -50,10 +51,10 @@ def backtest(
     funding_rates[CASH] = 0
 
     # Portfolio to record the units held of a ticker
-    port_df = util.fillcopy(weights, 0)
+    port_df = like(weights)
 
     # Track mark-to-market for the portfolio
-    equity_df = util.fillcopy(port_df, 0)
+    equity_df = like(port_df)
 
     # Final collated result returned to caller
     midx = pd.MultiIndex.from_product([weights.index, weights.columns])
@@ -122,11 +123,11 @@ def backtest(
         trade_size = trade_value / price
 
         # Calc funding payments
-        funding = util.fillcopy(equity)
-        funding = abs(equity) * funding_rate
+        funding = like(equity)
+        funding = equity * funding_rate
 
         # Calc commission for the traded tickers using the given commission func
-        commission = util.fillcopy(trade_value)
+        commission = like(trade_value)
         commission[do_trade] = [
             commission_func(x, y) for x, y in zip(trade_size, trade_value)
         ]
@@ -140,6 +141,7 @@ def backtest(
         end_port[CASH] += funding.sum()
         port_df.iloc[i] = end_port
 
+        # Append data for this time period to the result
         period_result = np.array(
             [
                 price,
@@ -149,13 +151,11 @@ def backtest(
                 adj_delta_weight,
                 trade_value,
                 trade_size,
-                # funding,
+                funding,
                 commission,
                 end_port,
             ]
         )
-
-        # Append data for this time period to the result
         result_df.loc[weights.index[i]] = period_result.T
 
     return result_df

@@ -63,22 +63,22 @@ def test_backtest_dolimittradesize():
 
 def test_backtest_fundingrates():
 
-    prices = pd.DataFrame([100, 100, 100, 100], columns=["Acme"])
-    weights = pd.DataFrame([1, 1, 1, -1], columns=["Acme"])
-    rates = pd.DataFrame([0.1, 0.1, -0.2, -0.2], columns=["Acme"])
+    prices = pd.DataFrame([100, 100, 100, 100, 100], columns=["Acme"])
+    weights = pd.DataFrame([1, 1, 1, -1, -1], columns=["Acme"])
+    rates = pd.DataFrame([0.1, 0.1, -0.2, -0.2, -0.2], columns=["Acme"])
     result = bt.backtest(prices, weights, rates)
 
     # Funding is paid on the positions from the previous period, so no impact when i == 0
-    assert result.loc[(0, bt.CASH)]["end_portfolio"] == 0
+    assert result.loc[(0, "Acme")]["funding"] == 0
 
     # Positive rate so we get paid 10% on our 1K position
-    assert result.loc[(1, bt.CASH)]["end_portfolio"] == 100
+    assert result.loc[(1, "Acme")]["funding"] == 100
 
     # Funding flips negative so we deduct 20% from our long
-    assert result.loc[(2, bt.CASH)]["end_portfolio"] == -100
+    assert result.loc[(2, "Acme")]["funding"] == -200
 
     # Now short on negative funding so get paid
-    assert result.loc[(3, bt.CASH)]["end_portfolio"] == 100
+    assert result.loc[(4, "Acme")]["funding"] == 200
 
     assert True
 
