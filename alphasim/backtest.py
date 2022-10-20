@@ -1,4 +1,5 @@
 from typing import Callable
+from itertools import repeat
 import numpy as np
 import pandas as pd
 
@@ -23,13 +24,12 @@ RESULT_KEYS = [
 def zero_commission(trade_size, trade_value):
     return 0
 
-
 def backtest(
     prices: pd.DataFrame,
     weights: pd.DataFrame,
     funding_rates: pd.DataFrame = None,
     trade_buffer: float = 0,
-    do_limit_trade_size: bool = False,
+    do_trade_to_buffer: bool = False,
     commission_func: Callable[[float, float], float] = zero_commission,
     initial_capital: float = 1000,
     do_reinvest: bool = False,
@@ -100,15 +100,18 @@ def backtest(
         delta_weight = target_weight - curr_weight
 
         # Based on buffer decide if trade should be made
-        do_trade = delta_weight.abs() > trade_buffer
+        do_trade = abs(delta_weight) > trade_buffer
         do_trade[CASH] = False
 
         # Default is to trade to the ideal target weight when commission is a fixed minimum or zero
         # Trade to buffer when commission is a linear pct of trade value (e.g. crypto)
         # Always trade to target weight when opening new poistion (i.e. current weight is zero)
         adj_target_weight = target_weight.copy()
-        if do_limit_trade_size:
-            adj_target_weight[do_trade] = target_weight - np.copysign(trade_buffer, target_weight)
+        if do_trade_to_buffer:
+            adj_target_weight[do_trade] = [
+                _buffer_target(x, y, z) for x, y, z in zip(
+                    target_weight, delta_weight, repeat(trade_buffer))
+            ]
 
         # If no trade indicated then set target weight to current weight
         adj_target_weight[~do_trade] = curr_weight
@@ -157,3 +160,16 @@ def backtest(
         result_df.loc[weights.index[i]] = period_result.T
 
     return result_df
+
+
+def _buffer_target(target_weight, delta_weight, trade_buffer):
+
+    target = target_weight
+
+    if delta_weight > 0:
+        target -= trade_buffer
+
+    if delta_weight < 0:
+        target += trade_buffer
+
+    return target
