@@ -2,6 +2,8 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 
+import alphasim.util as util
+
 CASH = "cash"
 EQUITY = "equity"
 RESULT_KEYS = [
@@ -24,7 +26,8 @@ def zero_commission(trade_size, trade_value):
 def backtest(
     prices: pd.DataFrame,
     weights: pd.DataFrame,
-    trade_buffer: float,
+    funding_rates: pd.DataFrame = None,
+    trade_buffer: float = 0,
     do_limit_trade_size: bool = False,
     commission_func: Callable[[float, float], float] = zero_commission,
     initial_capital: float = 1000,
@@ -33,11 +36,18 @@ def backtest(
 
     # Ensure prices and weights have the same dimensions
     if prices.shape != weights.shape:
-        raise ValueError()
+        raise ValueError("shape of prices must match weights")
+
+    if funding_rates is None:
+        funding_rates = util.fillcopy(weights)
+
+    if funding_rates.shape != weights.shape:
+        raise ValueError("shape of funding_rates must match weights")
 
     # Add cash asset to track trade balance changes
     prices[CASH] = 1.0
     weights[CASH] = 1.0 - weights.abs().sum(axis=1)
+    funding_rates[CASH] = 0
 
     # Portfolio to record the units held of a ticker
     port_df = _fillcopy(weights,0)
@@ -66,6 +76,7 @@ def backtest(
 
         # Slice to get data for current period
         price = prices.iloc[i]
+        funding_rate = funding_rates.iloc[i]
         equity = equity_df.iloc[i]
 
         # Mark-to-market the portfolio
@@ -120,6 +131,7 @@ def backtest(
         end_port[do_trade] += trade_size[do_trade]
         end_port[CASH] -= trade_value.loc[do_trade].sum()
         end_port[CASH] -= commission.loc[do_trade].sum()
+        end_port[CASH] += (equity * funding_rate).sum()
         port_df.iloc[i] = end_port
 
         # Append data for this time period to the result

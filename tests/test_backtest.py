@@ -6,9 +6,9 @@ import pandas as pd
 def test_backtest():
     prices = pd.DataFrame()
     weights = pd.DataFrame()
-    trade_buffer = 0.1
+    tb = 0.1
 
-    result = bt.backtest(prices, weights, trade_buffer)
+    result = bt.backtest(prices, weights, trade_buffer=tb)
 
     assert result is not None
 
@@ -21,8 +21,7 @@ def test_backtest_short():
 
     prices = pd.DataFrame([10, 15, 30], columns=["Acme"])
     weights = pd.DataFrame([-1, -1, -1], columns=["Acme"])
-    trade_buffer = 0
-    result = bt.backtest(prices, weights, trade_buffer)
+    result = bt.backtest(prices, weights)
 
     # In a short position the trade cost is added to the cash total
     assert result.loc[(0, bt.CASH)]["end_portfolio"] == 2000
@@ -40,9 +39,9 @@ def test_backtest_short():
 def test_backtest_dolimittradesize():
 
     prices = pd.DataFrame([100, 300, 300], columns=["Acme"])
-    weights = pd.DataFrame([0.5, 1.25, -1], columns=["Acme"])
-    trade_buffer = 0.25
-    result = bt.backtest(prices, weights, trade_buffer, do_limit_trade_size=True)
+    weights = pd.DataFrame([0.5, 1, 1], columns=["Acme"])
+    tb = 0.25
+    result = bt.backtest(prices, weights, trade_buffer=tb, do_limit_trade_size=True)
 
     # Open a new position but respect the trade buffer.
     assert result.loc[(0, bt.CASH)]["end_portfolio"] == 750

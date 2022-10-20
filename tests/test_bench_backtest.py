@@ -7,9 +7,9 @@ import os
 def test_bench_backtest():
     prices = _load_test_data("price_sample.csv")
     weights = _load_test_data("weight_sample.csv")
-    trade_buffer = 0.1
+    tb = 0.1
 
-    result = bt.backtest(prices, weights, trade_buffer)
+    result = bt.backtest(prices, weights, trade_buffer=tb)
 
     assert result is not None
 
