@@ -39,7 +39,7 @@ def test_backtest_short():
 def test_backtest_dolimittradesize():
 
     prices = pd.DataFrame([100, 300, 300], columns=["Acme"])
-    weights = pd.DataFrame([0.5, 1, 1], columns=["Acme"])
+    weights = pd.DataFrame([0.5, 1.25, -1], columns=["Acme"])
     tb = 0.25
     result = bt.backtest(prices, weights, trade_buffer=tb, do_limit_trade_size=True)
 

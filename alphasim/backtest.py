@@ -50,10 +50,10 @@ def backtest(
     funding_rates[CASH] = 0
 
     # Portfolio to record the units held of a ticker
-    port_df = _fillcopy(weights,0)
+    port_df = util.fillcopy(weights,0)
 
     # Track mark-to-market for the portfolio
-    equity_df = _fillcopy(port_df,0)
+    equity_df = util.fillcopy(port_df,0)
 
     # Final collated result returned to caller
     midx = pd.MultiIndex.from_product([weights.index, weights.columns])
@@ -150,7 +150,3 @@ def backtest(
         ).T
 
     return result_df
-
-
-def _fillcopy(df, x=0.0):
-    return df.copy(deep=True).apply(lambda y: x, result_type="broadcast")
