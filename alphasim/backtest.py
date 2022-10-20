@@ -14,7 +14,7 @@ RESULT_KEYS = [
     "adj_delta_weight",
     "trade_value",
     "trade_size",
-    #"funding",
+    "funding",
     "commission",
     "end_portfolio",
 ]
@@ -27,7 +27,7 @@ def zero_commission(trade_size, trade_value):
 def backtest(
     prices: pd.DataFrame,
     weights: pd.DataFrame,
-    #funding_rates: pd.DataFrame = None,
+    funding_rates: pd.DataFrame = None,
     trade_buffer: float = 0,
     do_limit_trade_size: bool = False,
     commission_func: Callable[[float, float], float] = zero_commission,
@@ -39,16 +39,16 @@ def backtest(
     if prices.shape != weights.shape:
         raise ValueError("shape of prices must match weights")
 
-    #if funding_rates is None:
-     #   funding_rates = like(weights)
+    if funding_rates is None:
+       funding_rates = like(weights)
 
-    #if funding_rates.shape != weights.shape:
-    #    raise ValueError("shape of funding_rates must match weights")
+    if funding_rates.shape != weights.shape:
+        raise ValueError("shape of funding_rates must match weights")
 
     # Add cash asset to track trade balance changes
     prices[CASH] = 1.0
     weights[CASH] = 1.0 - weights.abs().sum(axis=1)
-    #funding_rates[CASH] = 0
+    funding_rates[CASH] = 0
 
     # Portfolio to record the units held of a ticker
     port_df = like(weights)
@@ -77,7 +77,7 @@ def backtest(
 
         # Slice to get data for current period
         price = prices.iloc[i]
-        #funding_rate = funding_rates.iloc[i]
+        funding_rate = funding_rates.iloc[i]
         equity = equity_df.iloc[i]
 
         # Mark-to-market the portfolio
@@ -123,8 +123,8 @@ def backtest(
         trade_size = trade_value / price
 
         # Calc funding payments
-        #funding = like(equity)
-        #funding = equity * funding_rate
+        funding = like(equity)
+        funding = equity * funding_rate
 
         # Calc commission for the traded tickers using the given commission func
         commission = like(trade_value)
@@ -138,7 +138,7 @@ def backtest(
         end_port[do_trade] += trade_size[do_trade]
         end_port[CASH] -= trade_value.loc[do_trade].sum()
         end_port[CASH] -= commission.loc[do_trade].sum()
-        #end_port[CASH] += funding.sum()
+        end_port[CASH] += funding.sum()
         port_df.iloc[i] = end_port
 
         # Append data for this time period to the result
@@ -151,7 +151,7 @@ def backtest(
                 adj_delta_weight,
                 trade_value,
                 trade_size,
-                #funding,
+                funding,
                 commission,
                 end_port,
             ]
