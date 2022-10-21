@@ -6,10 +6,7 @@ import pandas as pd
 def test_backtest():
     prices = pd.DataFrame()
     weights = pd.DataFrame()
-    tb = 0.1
-
-    result = bt.backtest(prices, weights, trade_buffer=tb)
-
+    result = bt.backtest(prices, weights)
     assert result is not None
 
 
@@ -36,12 +33,11 @@ def test_backtest_short():
     assert result.loc[1, :][bt.EQUITY].sum() == 500
 
 
-def test_backtest_dolimittradesize():
+def test_backtest_tradetobuffer():
 
-    prices = pd.DataFrame([100, 300, 300], columns=["Acme"])
-    weights = pd.DataFrame([0.5, 1.25, -1], columns=["Acme"])
-    tb = 0.25
-    result = bt.backtest(prices, weights, trade_buffer=tb, do_trade_to_buffer=True)
+    prices = pd.DataFrame([100, 300, 300, 200, 200], columns=["Acme"])
+    weights = pd.DataFrame([0.5, 1.25, -1, -2, 0], columns=["Acme"])
+    result = bt.backtest(prices, weights, trade_buffer=0.25, do_trade_to_buffer=True)
 
     # Open a new position but respect the trade buffer.
     assert result.loc[(0, bt.CASH)]["end_portfolio"] == 750
@@ -57,6 +53,14 @@ def test_backtest_dolimittradesize():
     # Position flips short
     assert result.loc[(2, "Acme")]["adj_target_weight"] == -0.75
     assert result.loc[(2, "Acme")]["adj_delta_weight"] == -1.75
+
+     # Continue short
+    assert result.loc[(3, "Acme")]["adj_target_weight"] == -1.75
+    assert result.loc[(3, "Acme")]["adj_delta_weight"] == -1.25
+
+    # Position reverses
+    assert result.loc[(4, "Acme")]["adj_target_weight"] == -0.25
+    assert result.loc[(4, "Acme")]["adj_delta_weight"] == 1.5
 
     assert True
 

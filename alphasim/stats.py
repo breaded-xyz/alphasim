@@ -31,6 +31,7 @@ def calc_stats(result: pd.DataFrame) -> pd.DataFrame:
     df["funding"] = sum_df["funding"].sum()
     df["cost_profit_pct"] = (df["commission"] + df["funding"]) / df["profit"]
     df["trade_count"] = result["do_trade"].sum()
+    df["skew"] = ret_df.skew()
 
     return df.T
 

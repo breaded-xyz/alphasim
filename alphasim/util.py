@@ -11,5 +11,7 @@ def like(source):
         case pd.Series:
             copied = pd.Series(np.zeros(source.shape))
             copied.index = source.index
+        case _:
+            copied = np.zeros(source.shape)
 
     return copied

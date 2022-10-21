@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 from alphasim.util import like
+from alphasim.commission import zero_commission
 
 CASH = "cash"
 EQUITY = "equity"
@@ -19,21 +20,6 @@ RESULT_KEYS = [
     "commission",
     "end_portfolio",
 ]
-
-def zero_commission(trade_size, trade_value):
-    return 0
-
-def fixed_commission(trade_size, trade_value, fixed_commission):
-    return fixed_commission
-
-def linear_pct_commission(trade_size, trade_value, pct_commission):
-    commission = abs(trade_value) * pct_commission
-    return commission
-
-def tiered_pct_commission(trade_size, trade_value, min_fee_per_order, fee_per_unit, max_pct_per_order):
-    commission = np.min([abs(trade_size) * fee_per_unit, abs(trade_value) * max_pct_per_order])
-    commission = np.min([min_fee_per_order, commission])
-    return commission
 
 def backtest(
     prices: pd.DataFrame,
