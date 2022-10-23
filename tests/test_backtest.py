@@ -1,7 +1,8 @@
-import alphasim.backtest as bt
-
+import numpy as np 
 import pandas as pd
 
+import alphasim.backtest as bt
+import alphasim.capital as cpt
 
 def test_backtest():
     prices = pd.DataFrame()
@@ -91,13 +92,21 @@ def test_backtest_tradetoideal():
     assert True
 
 
-def test_backtest_mincommission():
+def test_backtest_commission():
     assert True
-
-
-def test_backtest_leverage():
-    assert True
-
 
 def test_backtest_reinvest():
+
+    prices = pd.DataFrame([10, 20, 30], columns=["Acme"])
+    weights = pd.DataFrame([1, 1, 1], columns=["Acme"])
+    result = bt.backtest(prices, weights, capital_func=cpt.sqrt_profit_capital)
+
+    assert result.loc[(0, bt.CASH)]["end_portfolio"] == 0
+    assert result.loc[(0, "Acme")]["end_portfolio"] == 100
+
+    # NAV of portfolio has doubled to 2000
+    # But we only reinvest sqrt of profit c.1414
+    assert result.loc[(1, bt.CASH)]["end_portfolio"] == 585.7864376269048
+    assert result.loc[(1, "Acme")]["end_portfolio"] == 70.71067811865476
+
     assert True

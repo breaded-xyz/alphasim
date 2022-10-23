@@ -5,6 +5,7 @@ import pandas as pd
 
 from alphasim.util import like
 from alphasim.commission import zero_commission
+from alphasim.capital import initial_capital
 
 CASH = "cash"
 EQUITY = "equity"
@@ -29,7 +30,7 @@ def backtest(
     do_trade_to_buffer: bool = False,
     commission_func: Callable[[float, float], float] = zero_commission,
     initial_capital: float = 1000,
-    do_reinvest: bool = False,
+    capital_func: Callable[[float, float], float] = initial_capital,
 ) -> pd.DataFrame:
 
     # Ensure prices and weights have the same dimensions
@@ -60,8 +61,8 @@ def backtest(
     # Time periods for the given simulation
     periods = len(weights)
 
-    # Default is not to re-invest profits and fix risk capital at initial capital
-    risk_capital = initial_capital
+    # Starting capital is initial capital
+    capital = capital_func(initial_capital, initial_capital)
 
     # Step through periods in chronological order
     for i in range(periods):
@@ -70,7 +71,7 @@ def backtest(
         # Initialize from starting capital if first period
         start_port = port_df.iloc[i - 1]
         if i == 0:
-            start_port[CASH] = initial_capital
+            start_port[CASH] = capital
 
         # Slice to get data for current period
         price = prices.iloc[i]
@@ -86,11 +87,10 @@ def backtest(
             break
 
         # Set the risk capital
-        if do_reinvest:
-            risk_capital = nav
+        capital = capital_func(initial_capital, nav)
 
         # Calc current portfolio weight based on risk capital
-        curr_weight = equity / risk_capital
+        curr_weight = equity / capital
 
         # Calc delta of current to target weight
         target_weight = weights.iloc[i]
@@ -117,7 +117,7 @@ def backtest(
         adj_delta_weight = adj_target_weight - curr_weight
 
         # Calc trades required to achieve adjusted target weight
-        trade_value = adj_delta_weight * risk_capital
+        trade_value = adj_delta_weight * capital
         trade_size = trade_value / price
 
         # Calc funding payments
