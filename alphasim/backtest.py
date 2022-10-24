@@ -47,7 +47,7 @@ def backtest(
     # Add cash asset to track trade balance changes
     prices[CASH] = 1.0
     weights[CASH] = 1.0 - weights.abs().sum(axis=1)
-    funding_rates[CASH] = 0
+    funding_rates[CASH] = 0.0
 
     # Portfolio to record the units held of a ticker
     port_df = like(weights)
@@ -58,6 +58,7 @@ def backtest(
     # Final collated result returned to caller
     midx = pd.MultiIndex.from_product([weights.index, weights.columns])
     result_df = pd.DataFrame(index=midx, columns=RESULT_KEYS)
+    result_df[:] = 0.0
 
     # Time periods for the given simulation
     periods = len(weights)
@@ -88,11 +89,7 @@ def backtest(
             break
 
         # Set the investable capital
-        capital = money_func(
-            initial=initial_capital,
-            open_equity=nav - equity[CASH],
-            closed_equity=equity[CASH],
-        )
+        capital = money_func(initial=initial_capital, total=nav)
 
         # Calc current portfolio weight based on risk capital
         curr_weight = equity / capital
