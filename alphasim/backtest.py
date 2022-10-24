@@ -12,6 +12,7 @@ EQUITY = "equity"
 RESULT_KEYS = [
     "price",
     EQUITY,
+    "start_weight",
     "do_trade",
     "adj_target_weight",
     "adj_delta_weight",
@@ -92,11 +93,11 @@ def backtest(
         capital = money_func(initial=initial_capital, total=nav)
 
         # Calc current portfolio weight based on risk capital
-        curr_weight = equity / capital
+        start_weight = equity / capital
 
         # Calc delta of current to target weight
         target_weight = weights.iloc[i]
-        delta_weight = target_weight - curr_weight
+        delta_weight = target_weight - start_weight
 
         # Based on buffer decide if trade should be made
         do_trade = abs(delta_weight) > trade_buffer
@@ -113,10 +114,10 @@ def backtest(
             ]
 
         # If no trade indicated then set target weight to current weight
-        adj_target_weight[~do_trade] = curr_weight
+        adj_target_weight[~do_trade] = start_weight
 
         # Calc adjusted delta for final trade sizing
-        adj_delta_weight = adj_target_weight - curr_weight
+        adj_delta_weight = adj_target_weight - start_weight
 
         # Calc trades required to achieve adjusted target weight
         trade_value = adj_delta_weight * capital
@@ -147,6 +148,7 @@ def backtest(
             [
                 price,
                 equity,
+                start_weight,
                 do_trade,
                 adj_target_weight,
                 adj_delta_weight,
