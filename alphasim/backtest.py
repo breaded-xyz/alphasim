@@ -5,7 +5,7 @@ import pandas as pd
 
 from alphasim.util import like
 from alphasim.commission import zero_commission
-from alphasim.capital import initial_capital
+from alphasim.money import initial_capital
 
 CASH = "cash"
 EQUITY = "equity"
@@ -22,6 +22,7 @@ RESULT_KEYS = [
     "end_portfolio",
 ]
 
+
 def backtest(
     prices: pd.DataFrame,
     weights: pd.DataFrame,
@@ -30,7 +31,7 @@ def backtest(
     do_trade_to_buffer: bool = False,
     commission_func: Callable[[float, float], float] = zero_commission,
     initial_capital: float = 1000,
-    capital_func: Callable[[float, float], float] = initial_capital,
+    money_func: Callable[[float, float], float] = initial_capital,
 ) -> pd.DataFrame:
 
     # Ensure prices and weights have the same dimensions
@@ -38,7 +39,7 @@ def backtest(
         raise ValueError("shape of prices must match weights")
 
     if funding_rates is None:
-       funding_rates = like(weights)
+        funding_rates = like(weights)
 
     if funding_rates.shape != weights.shape:
         raise ValueError("shape of funding_rates must match weights")
@@ -62,7 +63,7 @@ def backtest(
     periods = len(weights)
 
     # Starting capital is initial capital
-    capital = capital_func(initial_capital, initial_capital)
+    capital = initial_capital
 
     # Step through periods in chronological order
     for i in range(periods):
@@ -86,8 +87,12 @@ def backtest(
         if nav <= 0:
             break
 
-        # Set the risk capital
-        capital = capital_func(initial_capital, nav)
+        # Set the investable capital
+        capital = money_func(
+            initial=initial_capital,
+            open_equity=nav - equity[CASH],
+            closed_equity=equity[CASH],
+        )
 
         # Calc current portfolio weight based on risk capital
         curr_weight = equity / capital
@@ -106,8 +111,8 @@ def backtest(
         adj_target_weight = target_weight.copy()
         if do_trade_to_buffer:
             adj_target_weight[do_trade] = [
-                _buffer_target(x, y, z) for x, y, z in zip(
-                    target_weight, delta_weight, repeat(trade_buffer))
+                _buffer_target(x, y, z)
+                for x, y, z in zip(target_weight, delta_weight, repeat(trade_buffer))
             ]
 
         # If no trade indicated then set target weight to current weight

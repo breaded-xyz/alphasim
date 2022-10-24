@@ -1,8 +1,9 @@
-import numpy as np 
+import numpy as np
 import pandas as pd
 
 import alphasim.backtest as bt
-import alphasim.capital as cpt
+import alphasim.money as mo
+
 
 def test_backtest():
     prices = pd.DataFrame()
@@ -55,7 +56,7 @@ def test_backtest_tradetobuffer():
     assert result.loc[(2, "Acme")]["adj_target_weight"] == -0.75
     assert result.loc[(2, "Acme")]["adj_delta_weight"] == -1.75
 
-     # Continue short
+    # Continue short
     assert result.loc[(3, "Acme")]["adj_target_weight"] == -1.75
     assert result.loc[(3, "Acme")]["adj_delta_weight"] == -1.25
 
@@ -95,11 +96,12 @@ def test_backtest_tradetoideal():
 def test_backtest_commission():
     assert True
 
-def test_backtest_reinvest():
+
+def test_backtest_reinvest_sqrt():
 
     prices = pd.DataFrame([10, 20, 30], columns=["Acme"])
     weights = pd.DataFrame([1, 1, 1], columns=["Acme"])
-    result = bt.backtest(prices, weights, capital_func=cpt.sqrt_profit_capital)
+    result = bt.backtest(prices, weights, money_func=mo.sqrt_profit)
 
     assert result.loc[(0, bt.CASH)]["end_portfolio"] == 0
     assert result.loc[(0, "Acme")]["end_portfolio"] == 100
@@ -108,5 +110,7 @@ def test_backtest_reinvest():
     # But we only reinvest sqrt of profit c.1414
     assert result.loc[(1, bt.CASH)]["end_portfolio"] == 585.7864376269048
     assert result.loc[(1, "Acme")]["end_portfolio"] == 70.71067811865476
+
+    # TODO: test for short side equity
 
     assert True
