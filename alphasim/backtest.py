@@ -11,6 +11,7 @@ CASH = "cash"
 EQUITY = "equity"
 RESULT_KEYS = [
     "price",
+    "start_portfolio",
     EQUITY,
     "start_weight",
     "do_trade",
@@ -33,12 +34,14 @@ def backtest(
     commission_func: Callable[[float, float], float] = zero_commission,
     initial_capital: float = 1000,
     money_func: Callable[[float, float], float] = initial_capital,
+    final_portfolio: pd.Series = None,
 ) -> pd.DataFrame:
 
     # Ensure prices and weights have the same dimensions
     if prices.shape != weights.shape:
         raise ValueError("shape of prices must match weights")
 
+    # Create empty (zero) funding if none given 
     if funding_rates is None:
         funding_rates = like(weights)
 
@@ -56,7 +59,7 @@ def backtest(
     # Track mark-to-market for the portfolio
     equity_df = like(port_df)
 
-    # Final collated result returned to caller
+    # Final collated result
     midx = pd.MultiIndex.from_product([weights.index, weights.columns])
     result_df = pd.DataFrame(index=midx, columns=RESULT_KEYS)
     result_df[:] = 0.0
@@ -75,6 +78,10 @@ def backtest(
         start_port = port_df.iloc[i - 1]
         if i == 0:
             start_port[CASH] = capital
+        
+        # Intercept final period to start it with a user defined portfolio position
+        if (i == periods - 1) and (final_portfolio is not None):
+            start_port = final_portfolio
 
         # Slice to get data for current period
         price = prices.iloc[i]
@@ -147,6 +154,7 @@ def backtest(
         period_result = np.array(
             [
                 price,
+                start_port,
                 equity,
                 start_weight,
                 do_trade,
