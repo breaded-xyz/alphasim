@@ -6,10 +6,6 @@ import alphasim.backtest as bt
 VOLA_EWMA_ALPHA = 1.0 - 0.94
 TRADING_DAYS_YEAR = 252
 
-def _pnl(result: pd.DataFrame) -> pd.DataFrame:
-    df = result[bt.EQUITY].astype("float").groupby(level=0).sum().to_frame()
-    return df
-
 
 def calc_stats(result: pd.DataFrame) -> pd.DataFrame:
     
@@ -35,12 +31,18 @@ def calc_stats(result: pd.DataFrame) -> pd.DataFrame:
 
     return df.T
 
+def calc_pnl(result: pd.DataFrame) -> pd.DataFrame:
+    return _rollup_equity(result)
+
 def calc_log_returns(result: pd.DataFrame) -> pd.DataFrame:
-    pnl_df = _pnl(result)
-    ret_df = np.log(pnl_df / pnl_df.shift(1)).dropna()
-    return ret_df
+    pnl = _rollup_equity(result)
+    return np.log(pnl / pnl.shift(1))
 
 def calc_rolling_ann_vola(result: pd.DataFrame) -> pd.DataFrame:
-    ret_df = calc_log_returns(result)
-    vola_df = ret_df.ewm(alpha=VOLA_EWMA_ALPHA, adjust=False).std() * np.sqrt(TRADING_DAYS_YEAR)
-    return vola_df
+    pnl = _rollup_equity(result)
+    pnl = pnl.pct_change()
+    return pnl.ewm(alpha=VOLA_EWMA_ALPHA).std() * np.sqrt(TRADING_DAYS_YEAR)
+
+def _rollup_equity(result: pd.DataFrame) -> pd.DataFrame:
+    df = result[bt.EQUITY].astype(np.float64).groupby(level=0).sum().to_frame()
+    return df
