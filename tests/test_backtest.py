@@ -1,3 +1,4 @@
+from operator import index
 import numpy as np
 import pandas as pd
 
@@ -112,5 +113,19 @@ def test_backtest_reinvest_sqrt():
     assert result.loc[(1, "Acme")]["end_portfolio"] == 70.71067811865476
 
     # TODO: test for short side equity
+
+    assert True
+
+def test_backtest_finalportfolio():
+
+    prices = pd.DataFrame([100, 300, 300, 200, 200], columns=["Acme"])
+    weights = pd.DataFrame([0.5, 1.25, -1, -2, -2], columns=["Acme"])
+    final_portfolio = pd.Series([0, 400], index=["Acme", bt.CASH])
+
+    result = bt.backtest(prices, weights, final_portfolio=final_portfolio)
+
+    # Confirm last period was initiated with the given final portfolio
+    assert result.loc[(4, bt.CASH)]["start_portfolio"] == 400
+    assert result.loc[(4, "Acme")]["start_portfolio"] == 0
 
     assert True
