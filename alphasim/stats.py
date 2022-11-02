@@ -24,8 +24,8 @@ def calc_stats(result: pd.DataFrame) -> pd.DataFrame:
     df["ann_volatility"] = ret_df.std() * np.sqrt(TRADING_DAYS_YEAR)
     df["ann_sharpe"] = df["cagr"] / df["ann_volatility"]
     df["commission"] = sum_df["commission"].sum()
-    df["funding"] = sum_df["funding"].sum()
-    df["cost_profit_pct"] = (df["commission"] + df["funding"]) / df["profit"]
+    df["funding_payment"] = sum_df["funding_payment"].sum()
+    df["cost_profit_pct"] = (df["commission"] + df["funding_payment"]) / df["profit"]
     df["trade_count"] = result["do_trade"].sum()
     df["skew"] = ret_df.skew()
 

@@ -11,6 +11,7 @@ CASH = "cash"
 EQUITY = "equity"
 RESULT_KEYS = [
     "price",
+    "funding_rate",
     "start_portfolio",
     EQUITY,
     "start_weight",
@@ -19,7 +20,7 @@ RESULT_KEYS = [
     "adj_delta_weight",
     "trade_value",
     "trade_size",
-    "funding",
+    "funding_payment",
     "commission",
     "end_portfolio",
 ]
@@ -33,6 +34,7 @@ def backtest(
     do_trade_to_buffer: bool = False,
     commission_func: Callable[[float, float], float] = zero_commission,
     initial_capital: float = 1000,
+    leverage: float = 1,
     money_func: Callable[[float, float], float] = initial_capital,
     final_portfolio: pd.Series = None,
 ) -> pd.DataFrame:
@@ -50,7 +52,7 @@ def backtest(
 
     # Add cash asset to track trade balance changes
     prices[CASH] = 1.0
-    weights[CASH] = 1.0 - weights.abs().sum(axis=1)
+    weights[CASH] = leverage - weights.abs().sum(axis=1)
     funding_rates[CASH] = 0.0
 
     # Portfolio to record the units held of a ticker
@@ -131,8 +133,8 @@ def backtest(
         trade_size = trade_value / price
 
         # Calc funding payments
-        funding = like(equity)
-        funding = equity * funding_rate
+        funding_payment = like(equity)
+        funding_payment = equity * funding_rate
 
         # Calc commission for the traded tickers using the given commission func
         commission = like(trade_value)
@@ -147,13 +149,14 @@ def backtest(
         end_port[do_trade] += trade_size[do_trade]
         end_port[CASH] -= trade_value.loc[do_trade].sum()
         end_port[CASH] += commission.loc[do_trade].sum()
-        end_port[CASH] += funding.sum()
+        end_port[CASH] += funding_payment.sum()
         port_df.iloc[i] = end_port
 
         # Append data for this time period to the result
         period_result = np.array(
             [
                 price,
+                funding_rate,
                 start_port,
                 equity,
                 start_weight,
@@ -162,7 +165,7 @@ def backtest(
                 adj_delta_weight,
                 trade_value,
                 trade_size,
-                funding,
+                funding_payment,
                 commission,
                 end_port,
             ]

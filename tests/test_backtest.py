@@ -76,16 +76,16 @@ def test_backtest_fundingrates():
     result = bt.backtest(prices, weights, rates)
 
     # Funding is paid on the positions from the previous period, so no impact when i == 0
-    assert result.loc[(0, "Acme")]["funding"] == 0
+    assert result.loc[(0, "Acme")]["funding_payment"] == 0
 
     # Positive rate so we get paid 10% on our 1K position
-    assert result.loc[(1, "Acme")]["funding"] == 100
+    assert result.loc[(1, "Acme")]["funding_payment"] == 100
 
     # Funding flips negative so we deduct 20% from our long
-    assert result.loc[(2, "Acme")]["funding"] == -200
+    assert result.loc[(2, "Acme")]["funding_payment"] == -200
 
     # Now short on negative funding so get paid
-    assert result.loc[(4, "Acme")]["funding"] == 200
+    assert result.loc[(4, "Acme")]["funding_payment"] == 200
 
     assert True
 
