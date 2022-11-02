@@ -114,7 +114,6 @@ def backtest(
 
         # Default is to trade to the ideal target weight when commission is a fixed minimum or zero
         # Trade to buffer when commission is a linear pct of trade value (e.g. crypto)
-        # Always trade to target weight when opening new poistion (i.e. current weight is zero)
         adj_target_weight = target_weight.copy()
         if do_trade_to_buffer:
             adj_target_weight[do_trade] = [
@@ -122,7 +121,7 @@ def backtest(
                 for x, y, z in zip(target_weight, delta_weight, repeat(trade_buffer))
             ]
 
-        # If no trade indicated then set target weight to current weight
+        # If no trade indicated then set adjusted target weight to current weight
         adj_target_weight[~do_trade] = start_weight
 
         # Calc adjusted delta for final trade sizing
