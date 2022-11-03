@@ -11,7 +11,7 @@ def calc_stats(result: pd.DataFrame) -> pd.DataFrame:
 
     sum_df = result.groupby(level=0).sum()
     days = len(sum_df)
-    years = days / TRADING_DAYS_YEAR
+    years = days / 365
     ret_df = sum_df[bt.EQUITY].pct_change()
 
     df = pd.DataFrame(index=["result"])
@@ -27,8 +27,13 @@ def calc_stats(result: pd.DataFrame) -> pd.DataFrame:
     df["funding_payment"] = sum_df["funding_payment"].sum()
     df["cost_profit_pct"] = (df["commission"] + df["funding_payment"]) / df["profit"]
     df["trade_count"] = result["do_trade"].sum()
-    df["ann_turnover"] = _calc_turnover(result) / years
     df["skew"] = ret_df.skew()
+
+    ann_mean_equity = sum_df[bt.EQUITY].mean().squeeze() * years
+    buy_value = result["trade_value"].loc[result["trade_size"] > 0].abs().sum()
+    sell_value = result["trade_value"].loc[result["trade_size"] < 0].abs().sum()
+    tx_value = np.min([buy_value, sell_value])
+    df["ann_turnover"] = tx_value / ann_mean_equity
 
     return df.T
 
@@ -51,13 +56,3 @@ def calc_rolling_ann_vola(result: pd.DataFrame) -> pd.DataFrame:
 def _rollup_equity(result: pd.DataFrame) -> pd.DataFrame:
     df = result[bt.EQUITY].astype(np.float64).groupby(level=0).sum().to_frame()
     return df
-
-
-def _calc_turnover(result) -> float:
-    mean_equity = _rollup_equity(result).mean().squeeze()
-    buy_value = result["trade_value"].loc[result["trade_size"] > 0].abs().sum()
-    sell_value = result["trade_value"].loc[result["trade_size"] < 0].abs().sum()
-    tx_value = np.min([buy_value, sell_value])
-    turnover = tx_value / mean_equity
-
-    return turnover
