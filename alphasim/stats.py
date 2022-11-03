@@ -10,8 +10,7 @@ TRADING_DAYS_YEAR = 252
 def calc_stats(result: pd.DataFrame) -> pd.DataFrame:
 
     sum_df = result.groupby(level=0).sum()
-    days = len(sum_df)
-    years = days / 365
+    years = len(sum_df) / TRADING_DAYS_YEAR
     ret_df = sum_df[bt.EQUITY].pct_change()
 
     df = pd.DataFrame(index=["result"])
