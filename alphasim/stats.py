@@ -27,7 +27,7 @@ def calc_stats(result: pd.DataFrame) -> pd.DataFrame:
     df["funding_payment"] = sum_df["funding_payment"].sum()
     df["cost_profit_pct"] = (df["commission"] + df["funding_payment"]) / df["profit"]
     df["trade_count"] = result["do_trade"].sum()
-    df["turnover"] = _calc_turnover(result)
+    df["ann_turnover"] = _calc_turnover(result) / years
     df["skew"] = ret_df.skew()
 
     return df.T
