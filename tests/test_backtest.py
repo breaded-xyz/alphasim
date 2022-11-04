@@ -116,6 +116,7 @@ def test_backtest_reinvest_sqrt():
 
     assert True
 
+
 def test_backtest_finalportfolio():
 
     prices = pd.DataFrame([100, 300, 300, 200, 200], columns=["Acme"])
@@ -127,5 +128,13 @@ def test_backtest_finalportfolio():
     # Confirm last period was initiated with the given final portfolio
     assert result.loc[(4, bt.CASH)]["start_portfolio"] == 400
     assert result.loc[(4, "Acme")]["start_portfolio"] == 0
+
+    assert True
+
+
+def test_backtest_roundto():
+
+    x = -1.0015
+    assert bt._round_trade_size(x) == -1.002
 
     assert True

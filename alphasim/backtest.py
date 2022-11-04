@@ -7,6 +7,9 @@ from alphasim.util import like
 from alphasim.commission import zero_commission
 from alphasim.money import initial_capital
 
+TRADE_SIZE_STEP = 0.001
+TRADE_SIZE_PREC = 3
+
 CASH = "cash"
 EQUITY = "equity"
 RESULT_KEYS = [
@@ -43,7 +46,7 @@ def backtest(
     if prices.shape != weights.shape:
         raise ValueError("shape of prices must match weights")
 
-    # Create empty (zero) funding if none given 
+    # Create empty (zero) funding if none given
     if funding_rates is None:
         funding_rates = like(weights)
 
@@ -80,7 +83,7 @@ def backtest(
         start_port = port_df.iloc[i - 1]
         if i == 0:
             start_port[CASH] = capital
-        
+
         # Intercept final period to start it with a user defined portfolio position
         if (i == periods - 1) and (final_portfolio is not None):
             start_port = final_portfolio
@@ -185,3 +188,9 @@ def _buffer_target(target_weight, delta_weight, trade_buffer):
         target += trade_buffer
 
     return target
+
+
+def _round_trade_size(x):
+    z = TRADE_SIZE_STEP * np.round(x / TRADE_SIZE_STEP)
+    z = float(f"{z:.{TRADE_SIZE_PREC}f}")
+    return z
