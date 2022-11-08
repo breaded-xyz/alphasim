@@ -114,7 +114,7 @@ def backtest(
 
         # Adjust target weights based on target vola and leverage
         vola_adj_f = 1
-        if i > const.EWMA_WARMUP and ann_volatility_target is not None:
+        if i >= const.EWMA_WARMUP and ann_volatility_target is not None:
             vola_adj_f = _vola_adjustment_factor(
                 equity.iloc[:i], ann_volatility_target, leverage
             )
