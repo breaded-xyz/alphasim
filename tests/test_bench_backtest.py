@@ -11,7 +11,7 @@ def test_bench_backtest():
     weights = _load_test_data("weight_sample.csv")
     tb = 0.1
 
-    result = bt.backtest(prices, weights, trade_buffer=tb, ann_volatility_target=0.05)
+    result = bt.backtest(prices, weights, trade_buffer=tb)
     assert result is not None
 
     print(stats.calc_stats(result))

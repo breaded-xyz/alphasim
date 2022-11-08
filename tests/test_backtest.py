@@ -130,11 +130,3 @@ def test_backtest_finalportfolio():
     assert result.loc[(4, "Acme")]["start_portfolio"] == 0
 
     assert True
-
-
-def test_backtest_roundto():
-
-    x = -1.0015
-    assert bt._round_trade_size(x) == -1.002
-
-    assert True

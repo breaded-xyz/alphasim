@@ -39,7 +39,6 @@ def backtest(
     commission_func: Callable[[float, float], float] = zero_commission,
     initial_capital: float = 1000,
     leverage: float = 1,
-    ann_volatility_target: float = None,
     money_func: Callable[[float, float], float] = initial_capital,
     final_portfolio: pd.Series = None,
 ) -> pd.DataFrame:
@@ -86,7 +85,8 @@ def backtest(
         if i == 0:
             start_port[CASH] = capital
 
-        # Intercept final period to start it with a user defined portfolio position
+        # Intercept final period in order to start it with a user defined portfolio position
+        # Enables backtest to be used as input to real-time execution
         if (i == periods - 1) and (final_portfolio is not None):
             start_port = final_portfolio
 
@@ -109,18 +109,8 @@ def backtest(
         # Calc current portfolio weight based on risk capital
         start_weight = equity / capital
 
-        # Get pre-computed target weights for this period
-        target_weight = weights.iloc[i]
-
-        # Adjust target weights based on target vola and leverage
-        vola_adj_f = 1
-        if i >= const.EWMA_WARMUP and ann_volatility_target is not None:
-            vola_adj_f = _vola_adjustment_factor(
-                equity.iloc[:i], ann_volatility_target, leverage
-            )
-        target_weight *= vola_adj_f
-
         # Calc delta of current to target weight
+        target_weight = weights.iloc[i]
         delta_weight = target_weight - start_weight
 
         # Based on buffer decide if trade should be made
@@ -189,20 +179,6 @@ def backtest(
     return result_df
 
 
-def _vola_adjustment_factor(equity, target_vola, max_lev):
-    roll_vola = (equity / equity.shift(1)).apply(np.log).ewm(
-        alpha=const.EWMA_ALPHA, adjust=False
-    ).std() * np.sqrt(const.TRADING_DAYS_YEAR)
-    pf_ann_vola = roll_vola.iloc[-1]
-
-    if np.isnan(pf_ann_vola):
-        return 1
-
-    vola_adj_f = target_vola / pf_ann_vola
-
-    return vola_adj_f
-
-
 def _buffer_target(target_weight, delta_weight, trade_buffer):
 
     target = target_weight
@@ -214,9 +190,3 @@ def _buffer_target(target_weight, delta_weight, trade_buffer):
         target += trade_buffer
 
     return target
-
-
-def _round_trade_size(x):
-    z = TRADE_SIZE_STEP * np.round(x / TRADE_SIZE_STEP)
-    z = float(f"{z:.{TRADE_SIZE_PREC}f}")
-    return z
