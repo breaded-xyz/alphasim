@@ -199,9 +199,8 @@ def _vola_adjustment_factor(equity, target_vola, max_lev):
         return 1
 
     vola_adj_f = target_vola / pf_ann_vola
-    lev_capped_adj_f = np.min([vola_adj_f, max_lev])
 
-    return lev_capped_adj_f
+    return vola_adj_f
 
 
 def _buffer_target(target_weight, delta_weight, trade_buffer):
