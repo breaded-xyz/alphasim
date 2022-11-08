@@ -3,6 +3,7 @@ from itertools import repeat
 import numpy as np
 import pandas as pd
 
+import alphasim.const as const
 from alphasim.util import like
 from alphasim.commission import zero_commission
 from alphasim.money import initial_capital
@@ -38,6 +39,7 @@ def backtest(
     commission_func: Callable[[float, float], float] = zero_commission,
     initial_capital: float = 1000,
     leverage: float = 1,
+    ann_volatility_target: float = None,
     money_func: Callable[[float, float], float] = initial_capital,
     final_portfolio: pd.Series = None,
 ) -> pd.DataFrame:
@@ -107,8 +109,18 @@ def backtest(
         # Calc current portfolio weight based on risk capital
         start_weight = equity / capital
 
-        # Calc delta of current to target weight
+        # Get pre-computed target weights for this period
         target_weight = weights.iloc[i]
+
+        # Adjust target weights based on target vola and leverage
+        vola_adj_f = 1
+        if i > const.EWMA_WARMUP and ann_volatility_target is not None:
+            vola_adj_f = _vola_adjustment_factor(
+                equity.iloc[:i], ann_volatility_target, leverage
+            )
+        target_weight *= vola_adj_f
+
+        # Calc delta of current to target weight
         delta_weight = target_weight - start_weight
 
         # Based on buffer decide if trade should be made
@@ -175,6 +187,21 @@ def backtest(
         result_df.loc[weights.index[i]] = period_result.T
 
     return result_df
+
+
+def _vola_adjustment_factor(equity, target_vola, max_lev):
+    roll_vola = (equity / equity.shift(1)).apply(np.log).ewm(
+        alpha=const.EWMA_ALPHA, adjust=False
+    ).std() * np.sqrt(const.TRADING_DAYS_YEAR)
+    pf_ann_vola = roll_vola.iloc[-1]
+
+    if np.isnan(pf_ann_vola):
+        return 1
+
+    vola_adj_f = target_vola / pf_ann_vola
+    lev_capped_adj_f = np.min([vola_adj_f, max_lev])
+
+    return lev_capped_adj_f
 
 
 def _buffer_target(target_weight, delta_weight, trade_buffer):
