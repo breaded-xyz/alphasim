@@ -36,6 +36,7 @@ def backtest(
     funding_rates: pd.DataFrame = None,
     trade_buffer: float = 0,
     do_trade_to_buffer: bool = False,
+    do_liq_on_zero_weight: bool = False,
     commission_func: Callable[[float, float], float] = zero_commission,
     initial_capital: float = 1000,
     leverage: float = 1,
@@ -128,6 +129,13 @@ def backtest(
 
         # If no trade indicated then set adjusted target weight to current weight
         adj_target_weight[~do_trade] = start_weight
+
+        # Liquidate open positions in full (do not respect trade buffer) if flag set
+        if do_liq_on_zero_weight:
+            mask = start_weight.abs().gt(0) & target_weight.eq(0)
+            do_trade[mask] = True
+            adj_target_weight[mask] = 0
+            do_trade[CASH] = False
 
         # Calc adjusted delta for final trade sizing
         adj_delta_weight = adj_target_weight - start_weight
