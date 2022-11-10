@@ -1,12 +1,12 @@
-from typing import Callable
 from itertools import repeat
+from typing import Callable
+
 import numpy as np
 import pandas as pd
 
-import alphasim.const as const
-from alphasim.util import like
 from alphasim.commission import zero_commission
 from alphasim.money import initial_capital
+from alphasim.util import like
 
 TRADE_SIZE_STEP = 0.001
 TRADE_SIZE_PREC = 3
@@ -36,7 +36,7 @@ def backtest(
     funding_rates: pd.DataFrame = None,
     trade_buffer: float = 0,
     do_trade_to_buffer: bool = False,
-    do_liq_on_zero_weight: bool = False,
+    do_liquidate_on_zero_weight: bool = False,
     commission_func: Callable[[float, float], float] = zero_commission,
     initial_capital: float = 1000,
     leverage: float = 1,
@@ -131,7 +131,7 @@ def backtest(
         adj_target_weight[~do_trade] = start_weight
 
         # Liquidate open positions in full (do not respect trade buffer) if flag set
-        if do_liq_on_zero_weight:
+        if do_liquidate_on_zero_weight:
             mask = start_weight.abs().gt(0) & target_weight.eq(0)
             do_trade[mask] = True
             adj_target_weight[mask] = 0
