@@ -33,6 +33,12 @@ def calc_stats(result: pd.DataFrame, freq: int=1, freq_unit: str="D", ) -> pd.Da
     df["trade_count"] = result["do_trade"].sum()
     df["skew"] = ret_df.skew()
 
+    ann_mean_equity = sum_df[bt.EQUITY].mean().squeeze() * years
+    buy_value = result["trade_value"].loc[result["trade_size"] > 0].abs().sum()
+    sell_value = result["trade_value"].loc[result["trade_size"] < 0].abs().sum()
+    tx_value = np.min([buy_value, sell_value])
+    df["ann_turnover"] = tx_value / ann_mean_equity
+
     return df.T
 
 def calc_pnl(result: pd.DataFrame) -> pd.DataFrame:
