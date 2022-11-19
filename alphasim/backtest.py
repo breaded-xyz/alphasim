@@ -4,6 +4,7 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 
+import alphasim.const as const
 from alphasim.commission import zero_commission
 from alphasim.money import initial_capital
 from alphasim.util import like
@@ -38,6 +39,7 @@ def backtest(
     do_trade_to_buffer: bool = False,
     do_liquidate_on_zero_weight: bool = False,
     commission_func: Callable[[float, float], float] = zero_commission,
+    fixed_slippage: float = 0.0,
     initial_capital: float = 1000,
     leverage: float = 1,
     money_func: Callable[[float, float], float] = initial_capital,
@@ -123,14 +125,14 @@ def backtest(
         adj_target_weight = target_weight.copy()
         if do_trade_to_buffer:
             adj_target_weight[do_trade] = [
-                _buffer_target(x, y, z)
-                for x, y, z in zip(target_weight, delta_weight, repeat(trade_buffer))
+                _buffer_target(x, y, trade_buffer)
+                for x, y in zip(target_weight, delta_weight)
             ]
 
         # If no trade indicated then set adjusted target weight to current weight
         adj_target_weight[~do_trade] = start_weight
 
-        # Liquidate open positions in full (do not respect trade buffer) if flag set
+        # Liquidate open positions in full (do not respect trade buffer)
         if do_liquidate_on_zero_weight:
             mask = start_weight.abs().gt(0) & target_weight.eq(0)
             do_trade[mask] = True
@@ -140,9 +142,12 @@ def backtest(
         # Calc adjusted delta for final trade sizing
         adj_delta_weight = adj_target_weight - start_weight
 
-        # Calc trades required to achieve adjusted target weight
+        # Calc trades required to achieve adjusted target weight using a fixed slippage factor
         trade_value = adj_delta_weight * capital
-        trade_size = trade_value / price
+        slippage_price = [
+            _slippage_price(x, y, fixed_slippage) for x, y in zip(adj_target_weight, price)
+        ]
+        trade_size = trade_value / slippage_price
 
         # Calc funding payments
         funding_payment = like(equity)
@@ -187,14 +192,26 @@ def backtest(
     return result_df
 
 
+def _slippage_price(target_weight, price, slippage_pct):
+
+    slippage_price = price
+
+    if target_weight > 0:
+        slippage_price *= (1 + slippage_pct)
+    
+    if target_weight < 0:
+        slippage_price *= (1 - slippage_pct)
+
+    return slippage_price
+
 def _buffer_target(target_weight, delta_weight, trade_buffer):
 
-    target = target_weight
+    buffer_target = target_weight
 
     if delta_weight > 0:
-        target -= trade_buffer
+        buffer_target -= trade_buffer
 
     if delta_weight < 0:
-        target += trade_buffer
+        buffer_target += trade_buffer
 
-    return target
+    return buffer_target
