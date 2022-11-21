@@ -5,16 +5,19 @@ import alphasim.const as const
 import alphasim.backtest as bt
 
 
+def calc_stats(
+    result: pd.DataFrame,
+    freq: int = 1,
+    freq_unit: str = "D",
+) -> pd.DataFrame:
 
-def calc_stats(result: pd.DataFrame, freq: int=1, freq_unit: str="D", ) -> pd.DataFrame:
-    
     sum_df = result.groupby(level=0).sum()
     start = sum_df.index[0]
     end = sum_df.index[-1]
     days = (end - start).days
-    years = days/const.TRADING_DAYS_YEAR
+    years = days / const.TRADING_DAYS_YEAR
 
-    ret_df = sum_df[bt.EQUITY].pct_change()
+    ret_df = np.log(sum_df[bt.EQUITY] / sum_df[bt.EQUITY].shift(1))
     ret_per_day = pd.Timedelta(1, unit="D") / pd.Timedelta(freq, unit=freq_unit)
 
     df = pd.DataFrame(index=["result"])
@@ -23,7 +26,7 @@ def calc_stats(result: pd.DataFrame, freq: int=1, freq_unit: str="D", ) -> pd.Da
     df["initial"] = sum_df[bt.EQUITY].iloc[0]
     df["final"] = sum_df[bt.EQUITY].iloc[-1]
     df["profit"] = df["final"] - df["initial"]
-    df["cagr"] = (df["final"] / df["initial"]) ** (1/years) - 1
+    df["cagr"] = (df["final"] / df["initial"]) ** (1 / years) - 1
     df["ann_volatility"] = ret_df.std() * np.sqrt(ret_per_day * const.TRADING_DAYS_YEAR)
     df["ann_sharpe"] = df["cagr"] / df["ann_volatility"]
     df["commission"] = sum_df["commission"].sum()
@@ -40,17 +43,26 @@ def calc_stats(result: pd.DataFrame, freq: int=1, freq_unit: str="D", ) -> pd.Da
 
     return df.T
 
+
 def calc_pnl(result: pd.DataFrame) -> pd.DataFrame:
     return _rollup_equity(result)
+
 
 def calc_log_returns(result: pd.DataFrame) -> pd.DataFrame:
     pnl = _rollup_equity(result)
     return np.log(pnl / pnl.shift(1))
 
-def calc_rolling_ann_vola(result: pd.DataFrame, window=60, freq: int=1, freq_unit: str="D") -> pd.DataFrame:
-    pnl = _rollup_equity(result).pct_change()
+
+def calc_rolling_ann_vola(
+    result: pd.DataFrame, window=60, freq: int = 1, freq_unit: str = "D"
+) -> pd.DataFrame:
+    pnl = calc_log_returns(result)
     ret_per_day = pd.Timedelta(1, unit="D") / pd.Timedelta(freq, unit=freq_unit)
-    return pnl.rolling(window=window).std() * np.sqrt(ret_per_day * const.TRADING_DAYS_YEAR)
+    vola = pnl.rolling(window=window).std() * np.sqrt(
+        ret_per_day * const.TRADING_DAYS_YEAR
+    )
+    return vola
+
 
 def _rollup_equity(result: pd.DataFrame) -> pd.DataFrame:
     df = result[bt.EQUITY].astype(np.float64).groupby(level=0).sum().to_frame()
