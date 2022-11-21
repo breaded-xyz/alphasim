@@ -1,4 +1,3 @@
-from itertools import repeat
 from typing import Callable
 
 import numpy as np
@@ -9,8 +8,7 @@ from alphasim.commission import zero_commission
 from alphasim.money import initial_capital
 from alphasim.util import like
 
-TRADE_SIZE_STEP = 0.001
-TRADE_SIZE_PREC = 3
+
 
 CASH = "cash"
 EQUITY = "equity"
@@ -39,9 +37,8 @@ def backtest(
     do_trade_to_buffer: bool = False,
     do_liquidate_on_zero_weight: bool = False,
     commission_func: Callable[[float, float], float] = zero_commission,
-    fixed_slippage: float = 0.0,
+    fixed_slippage: float = 0,
     initial_capital: float = 1000,
-    leverage: float = 1,
     money_func: Callable[[float, float], float] = initial_capital,
     final_portfolio: pd.Series = None,
 ) -> pd.DataFrame:
@@ -58,9 +55,9 @@ def backtest(
         raise ValueError("shape of funding_rates must match weights")
 
     # Add cash asset to track trade balance changes
-    prices[CASH] = 1.0
-    weights[CASH] = leverage - weights.abs().sum(axis=1)
-    funding_rates[CASH] = 0.0
+    prices[CASH] = 1
+    weights[CASH] = 0
+    funding_rates[CASH] = 0
 
     # Portfolio to record the units held of a ticker
     port_df = like(weights)
@@ -71,7 +68,7 @@ def backtest(
     # Final collated result
     midx = pd.MultiIndex.from_product([weights.index, weights.columns])
     result_df = pd.DataFrame(index=midx, columns=RESULT_KEYS)
-    result_df[:] = 0.0
+    result_df[:] = 0
 
     # Time periods for the given simulation
     periods = len(weights)
@@ -118,15 +115,13 @@ def backtest(
 
         # Based on buffer decide if trade should be made
         do_trade = abs(delta_weight) > trade_buffer
-        do_trade[CASH] = False
 
         # Default is to trade to the ideal target weight when commission is a fixed minimum or zero
         # Trade to buffer when commission is a linear pct of trade value (e.g. crypto)
         adj_target_weight = target_weight.copy()
         if do_trade_to_buffer:
             adj_target_weight[do_trade] = [
-                _buffer_target(x, y, trade_buffer)
-                for x, y in zip(target_weight, delta_weight)
+                _buffer_target(x, y, trade_buffer) for x, y in zip(target_weight, delta_weight)
             ]
 
         # If no trade indicated then set adjusted target weight to current weight
@@ -137,7 +132,6 @@ def backtest(
             mask = start_weight.abs().gt(0) & target_weight.eq(0)
             do_trade[mask] = True
             adj_target_weight[mask] = 0
-            do_trade[CASH] = False
 
         # Calc adjusted delta for final trade sizing
         adj_delta_weight = adj_target_weight - start_weight
@@ -160,8 +154,17 @@ def backtest(
         ]
         commission = -commission
 
-        # Calc post trade port positions
-        # Account for changes to cash from trade activity
+        # Zero the cash asset which is not directly traded
+        do_trade[CASH] = False
+        target_weight[CASH] = 0
+        adj_target_weight[CASH] = 0
+        adj_delta_weight[CASH] = 0
+        trade_value[CASH] = 0
+        trade_size[CASH] = 0
+        funding_payment[CASH] = 0
+        commission[CASH] = 0
+
+        # Calc post trade portfolio and cash positions
         end_port = start_port.copy()
         end_port[do_trade] += trade_size[do_trade]
         end_port[CASH] -= trade_value.loc[do_trade].sum()

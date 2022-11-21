@@ -47,11 +47,10 @@ def calc_log_returns(result: pd.DataFrame) -> pd.DataFrame:
     pnl = _rollup_equity(result)
     return np.log(pnl / pnl.shift(1))
 
-def calc_rolling_ann_vola(result: pd.DataFrame, freq: int=1, freq_unit: str="D") -> pd.DataFrame:
-    pnl = _rollup_equity(result)
-    pnl = pnl.pct_change()
-    pnl_per_day = pd.Timedelta(1, unit="D") / pd.Timedelta(freq, unit=freq_unit)
-    return pnl.ewm(alpha=const.EWMA_ALPHA).std() * np.sqrt(pnl_per_day * const.TRADING_DAYS_YEAR)
+def calc_rolling_ann_vola(result: pd.DataFrame, window=60, freq: int=1, freq_unit: str="D") -> pd.DataFrame:
+    pnl = _rollup_equity(result).pct_change()
+    ret_per_day = pd.Timedelta(1, unit="D") / pd.Timedelta(freq, unit=freq_unit)
+    return pnl.rolling(window=window).std() * np.sqrt(ret_per_day * const.TRADING_DAYS_YEAR)
 
 def _rollup_equity(result: pd.DataFrame) -> pd.DataFrame:
     df = result[bt.EQUITY].astype(np.float64).groupby(level=0).sum().to_frame()
