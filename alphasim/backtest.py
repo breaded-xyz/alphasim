@@ -166,8 +166,8 @@ def backtest(
         # Calc post trade portfolio and cash positions
         end_port = start_port.copy()
         end_port[do_trade] += trade_size[do_trade]
-        end_port[CASH] -= trade_value.loc[do_trade].sum()
-        end_port[CASH] += commission.loc[do_trade].sum()
+        end_port[CASH] -= trade_value[do_trade].sum()
+        end_port[CASH] += commission[do_trade].sum()
         end_port[CASH] += funding_payment.sum()
         port_df.iloc[i] = end_port
 
