@@ -17,7 +17,7 @@ def calc_stats(
     days = (end - start).days
     years = days / const.TRADING_DAYS_YEAR
 
-    ret_df = np.log(sum_df[bt.EQUITY] / sum_df[bt.EQUITY].shift(1))
+    ret_df = calc_returns(result)
     ret_per_day = pd.Timedelta(1, unit="D") / pd.Timedelta(freq, unit=freq_unit)
 
     df = pd.DataFrame(index=["result"])
@@ -44,26 +44,13 @@ def calc_stats(
     return df.T
 
 
-def calc_pnl(result: pd.DataFrame) -> pd.DataFrame:
-    return _rollup_equity(result)
+def calc_returns(result: pd.DataFrame) -> pd.DataFrame:
 
+    equity = (result[bt.EQUITY]
+        .astype(np.float64)
+        .groupby(level=0)
+        .sum())
+    
+    ret = np.log(equity / equity.shift(1))
 
-def calc_log_returns(result: pd.DataFrame) -> pd.DataFrame:
-    pnl = _rollup_equity(result)
-    return np.log(pnl / pnl.shift(1))
-
-
-def calc_rolling_ann_vola(
-    result: pd.DataFrame, window=60, freq: int = 1, freq_unit: str = "D"
-) -> pd.DataFrame:
-    pnl = calc_log_returns(result)
-    ret_per_day = pd.Timedelta(1, unit="D") / pd.Timedelta(freq, unit=freq_unit)
-    vola = pnl.rolling(window=window).std() * np.sqrt(
-        ret_per_day * const.TRADING_DAYS_YEAR
-    )
-    return vola
-
-
-def _rollup_equity(result: pd.DataFrame) -> pd.DataFrame:
-    df = result[bt.EQUITY].astype(np.float64).groupby(level=0).sum().to_frame()
-    return df
+    return ret
