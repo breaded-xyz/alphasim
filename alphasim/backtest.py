@@ -156,7 +156,6 @@ def backtest(
 
         # Zero the cash asset which is not directly traded
         do_trade[CASH] = False
-        target_weight[CASH] = 0
         adj_target_weight[CASH] = 0
         adj_delta_weight[CASH] = 0
         trade_value[CASH] = 0
