@@ -23,6 +23,7 @@ def calc_stats(
     df = pd.DataFrame(index=["result"])
     df["start"] = start
     df["end"] = end
+    df["trading_days_year"] = const.TRADING_DAYS_YEAR
     df["initial"] = sum_df[bt.EQUITY].iloc[0]
     df["final"] = sum_df[bt.EQUITY].iloc[-1]
     df["profit"] = df["final"] - df["initial"]
@@ -45,8 +46,4 @@ def calc_stats(
 
 
 def calc_returns(result: pd.DataFrame) -> pd.DataFrame:
-    return (result[bt.EQUITY]
-        .astype(np.float64)
-        .groupby(level=0)
-        .sum()
-        .pct_change())
+    return result[bt.EQUITY].astype(np.float64).groupby(level=0).sum().pct_change()
