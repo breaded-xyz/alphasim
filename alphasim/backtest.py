@@ -94,7 +94,6 @@ def backtest(
         # Slice to get data for current period
         price = prices.iloc[i]
         funding_rate = funding_rates.iloc[i]
-        equity = equity_df.iloc[i]
 
         # Mark-to-market the portfolio
         equity = start_port * price
@@ -119,9 +118,10 @@ def backtest(
                 .pct_change()
                 .ewm(alpha=const.EWMA_ALPHA)
                 .std()
-                .iloc[i])     
-            vola_adj_f = target_ann_volatility / (vola * np.sqrt(const.TRADING_DAYS_YEAR))
-            target_weight *= vola_adj_f
+                .iloc[i])
+            if vola > 0:
+                vola_adj_f = target_ann_volatility / (vola * np.sqrt(const.TRADING_DAYS_YEAR))
+                target_weight *= vola_adj_f
 
         delta_weight = target_weight - start_weight
 
@@ -182,6 +182,8 @@ def backtest(
         end_port[CASH] += commission[do_trade].sum()
         end_port[CASH] += funding_payment.sum()
         port_df.iloc[i] = end_port
+
+        equity_df.iloc[i] = equity
 
         # Append data for this time period to the result
         period_result = np.array(
