@@ -45,12 +45,8 @@ def calc_stats(
 
 
 def calc_returns(result: pd.DataFrame) -> pd.DataFrame:
-
-    equity = (result[bt.EQUITY]
+    return (result[bt.EQUITY]
         .astype(np.float64)
         .groupby(level=0)
-        .sum())
-    
-    ret = np.log(equity / equity.shift(1))
-
-    return ret
+        .sum()
+        .pct_change())
