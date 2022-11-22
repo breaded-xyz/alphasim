@@ -39,6 +39,7 @@ def backtest(
     commission_func: Callable[[float, float], float] = zero_commission,
     fixed_slippage: float = 0,
     initial_capital: float = 1000,
+    target_ann_volatility: float = None,
     money_func: Callable[[float, float], float] = initial_capital,
     final_portfolio: pd.Series = None,
 ) -> pd.DataFrame:
@@ -110,7 +111,18 @@ def backtest(
         start_weight = equity / capital
 
         # Calc delta of current to target weight
-        target_weight = weights.iloc[i]
+        target_weight = weights.iloc[i].copy()
+
+        if target_ann_volatility is not None:
+            vola = (equity_df
+                .sum(axis=1)
+                .pct_change()
+                .ewm(alpha=const.EWMA_ALPHA)
+                .std()
+                .iloc[i])     
+            vola_adj_f = target_ann_volatility / (vola * np.sqrt(const.TRADING_DAYS_YEAR))
+            target_weight *= vola_adj_f
+
         delta_weight = target_weight - start_weight
 
         # Based on buffer decide if trade should be made
