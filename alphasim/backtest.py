@@ -39,7 +39,6 @@ def backtest(
     commission_func: Callable[[float, float], float] = zero_commission,
     fixed_slippage: float = 0,
     initial_capital: float = 1000,
-    target_ann_volatility: float = None,
     money_func: Callable[[float, float], float] = initial_capital,
     final_portfolio: pd.Series = None,
 ) -> pd.DataFrame:
@@ -62,9 +61,6 @@ def backtest(
 
     # Portfolio to record the units held of a ticker
     port_df = like(weights)
-
-    # Track mark-to-market for the portfolio
-    equity_df = like(port_df)
 
     # Final collated result
     midx = pd.MultiIndex.from_product([weights.index, weights.columns])
@@ -110,19 +106,7 @@ def backtest(
         start_weight = equity / capital
 
         # Calc delta of current to target weight
-        target_weight = weights.iloc[i].copy()
-
-        if target_ann_volatility is not None:
-            vola = (equity_df
-                .sum(axis=1)
-                .pct_change()
-                .ewm(alpha=const.EWMA_ALPHA)
-                .std()
-                .iloc[i])
-            if vola > 0:
-                vola_adj_f = target_ann_volatility / (vola * np.sqrt(const.TRADING_DAYS_YEAR))
-                target_weight *= vola_adj_f
-
+        target_weight = weights.iloc[i]
         delta_weight = target_weight - start_weight
 
         # Based on buffer decide if trade should be made
@@ -182,8 +166,6 @@ def backtest(
         end_port[CASH] += commission[do_trade].sum()
         end_port[CASH] += funding_payment.sum()
         port_df.iloc[i] = end_port
-
-        equity_df.iloc[i] = equity
 
         # Append data for this time period to the result
         period_result = np.array(
