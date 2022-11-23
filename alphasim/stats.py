@@ -47,3 +47,8 @@ def calc_stats(
 
 def calc_returns(result: pd.DataFrame) -> pd.DataFrame:
     return result[bt.EQUITY].astype(np.float64).groupby(level=0).sum().pct_change()
+
+
+def calc_log_returns(result: pd.DataFrame) -> pd.DataFrame:
+    equity = result[bt.EQUITY].astype(np.float64).groupby(level=0).sum()
+    return (equity / equity.shift(1)).apply(np.log)
