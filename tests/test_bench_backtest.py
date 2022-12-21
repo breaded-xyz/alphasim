@@ -14,7 +14,10 @@ def test_bench_backtest():
     result = bt.backtest(prices, weights, trade_buffer=tb)
     assert result is not None
 
-    print(stats.backtest_stats(result))
+    benchmark_prices = prices[["VTI"]]
+    result_stats = stats.backtest_stats(result, benchmark=benchmark_prices)
+
+    print(result_stats)
 
 
 def _load_test_data(filename):

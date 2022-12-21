@@ -44,8 +44,8 @@ def backtest_stats(
     df["ann_turnover"] = tx_value / ann_mean_equity
 
     if benchmark is not None:
-        benchmark_stats = _asset_stats(benchmark)
-        df = pd.concat([result, benchmark_stats], join="outer")
+        benchmark_stats = _asset_stats(benchmark, initial=df["initial"].squeeze(), freq=freq, freq_unit=freq_unit)
+        df = pd.concat([benchmark_stats, df], join="outer")
 
     return df.T
 
@@ -71,21 +71,18 @@ def _asset_stats(
     ret = prices.pct_change()
     ret_per_day = pd.Timedelta(1, unit="D") / pd.Timedelta(freq, unit=freq_unit)
 
-    port_units = prices.iloc[0] / initial
+    port_units = initial / prices.iloc[0].squeeze()
 
-    df = pd.DataFrame(index=[prices.columns[0].name])
+    df = pd.DataFrame(index=[prices.columns[0]])
     df["start"] = start
     df["end"] = end
     df["trading_days_year"] = const.TRADING_DAYS_YEAR
     df["initial"] = initial
-    df["final"] = prices.iloc[-1] * port_units
+    df["final"] = prices.iloc[-1].squeeze() * port_units
     df["profit"] = df["final"] - df["initial"]
     df["cagr"] = (df["final"] / df["initial"]) ** (1 / years) - 1
     df["ann_volatility"] = ret.std() * np.sqrt(ret_per_day * const.TRADING_DAYS_YEAR)
     df["ann_sharpe"] = df["cagr"] / df["ann_volatility"]
-    df["commission"] = 0
-    df["funding_payment"] = 0
-    df["cost_profit_pct"] = 0
     df["trade_count"] = 1
     df["skew"] = ret.skew()
 
