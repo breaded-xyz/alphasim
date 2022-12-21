@@ -5,8 +5,9 @@ import alphasim.const as const
 import alphasim.backtest as bt
 
 
-def calc_stats(
+def backtest_stats(
     result: pd.DataFrame,
+    benchmark: pd.DataFrame = None,
     freq: int = 1,
     freq_unit: str = "D",
 ) -> pd.DataFrame:
@@ -17,7 +18,7 @@ def calc_stats(
     days = (end - start).days
     years = days / const.TRADING_DAYS_YEAR
 
-    ret_df = calc_returns(result)
+    ret_df = backtest_returns(result)
     ret_per_day = pd.Timedelta(1, unit="D") / pd.Timedelta(freq, unit=freq_unit)
 
     df = pd.DataFrame(index=["result"])
@@ -42,13 +43,50 @@ def calc_stats(
     tx_value = np.min([buy_value, sell_value])
     df["ann_turnover"] = tx_value / ann_mean_equity
 
+    if benchmark is not None:
+        benchmark_stats = _asset_stats(benchmark)
+        df = pd.concat([result, benchmark_stats], join="outer")
+
     return df.T
 
 
-def calc_returns(result: pd.DataFrame) -> pd.DataFrame:
+def backtest_returns(result: pd.DataFrame) -> pd.DataFrame:
     return result[bt.EQUITY].astype(np.float64).groupby(level=0).sum().pct_change()
 
 
-def calc_log_returns(result: pd.DataFrame) -> pd.DataFrame:
+def backtest_log_returns(result: pd.DataFrame) -> pd.DataFrame:
     equity = result[bt.EQUITY].astype(np.float64).groupby(level=0).sum()
     return (equity / equity.shift(1)).apply(np.log)
+
+
+def _asset_stats(
+    prices: pd.DataFrame, initial: float = 1000, freq: int = 1, freq_unit: str = "D"
+) -> pd.DataFrame:
+
+    start = prices.index[0]
+    end = prices.index[-1]
+    days = (end - start).days
+    years = days / const.TRADING_DAYS_YEAR
+
+    ret = prices.pct_change()
+    ret_per_day = pd.Timedelta(1, unit="D") / pd.Timedelta(freq, unit=freq_unit)
+
+    port_units = prices.iloc[0] / initial
+
+    df = pd.DataFrame(index=[prices.columns[0].name])
+    df["start"] = start
+    df["end"] = end
+    df["trading_days_year"] = const.TRADING_DAYS_YEAR
+    df["initial"] = initial
+    df["final"] = prices.iloc[-1] * port_units
+    df["profit"] = df["final"] - df["initial"]
+    df["cagr"] = (df["final"] / df["initial"]) ** (1 / years) - 1
+    df["ann_volatility"] = ret.std() * np.sqrt(ret_per_day * const.TRADING_DAYS_YEAR)
+    df["ann_sharpe"] = df["cagr"] / df["ann_volatility"]
+    df["commission"] = 0
+    df["funding_payment"] = 0
+    df["cost_profit_pct"] = 0
+    df["trade_count"] = 1
+    df["skew"] = ret.skew()
+
+    return df
