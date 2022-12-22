@@ -36,6 +36,7 @@ def backtest_stats(
     df["cost_profit_pct"] = (df["commission"] + df["funding_payment"]) / df["profit"]
     df["trade_count"] = result["do_trade"].sum()
     df["skew"] = ret_df.skew()
+    df["kurtosis"] = ret_df.kurtosis()
 
     ann_mean_equity = sum_df[bt.EQUITY].mean().squeeze() * years
     buy_value = result["trade_value"].loc[result["trade_size"] > 0].abs().sum()
@@ -44,8 +45,12 @@ def backtest_stats(
     df["ann_turnover"] = tx_value / ann_mean_equity
 
     if benchmark is not None:
-        benchmark_stats = _asset_stats(benchmark, initial=df["initial"].squeeze(), freq=freq, freq_unit=freq_unit)
-        df = pd.concat([benchmark_stats, df], join="outer")
+        benchmark_stats = _asset_stats(
+            benchmark, initial=df["initial"].squeeze(), freq=freq, freq_unit=freq_unit
+        )
+        df = pd.concat(
+            [benchmark_stats, df], join="outer", keys=["benchmark", "backtest"]
+        ).droplevel(1)
 
     return df.T
 
@@ -85,5 +90,6 @@ def _asset_stats(
     df["ann_sharpe"] = df["cagr"] / df["ann_volatility"]
     df["trade_count"] = 1
     df["skew"] = ret.skew()
+    df["kurtosis"] = ret.kurtosis()
 
     return df
