@@ -9,7 +9,6 @@ from alphasim.money import initial_capital
 from alphasim.util import like
 
 
-
 CASH = "cash"
 EQUITY = "equity"
 RESULT_KEYS = [
@@ -35,6 +34,7 @@ def backtest(
     funding_rates: pd.DataFrame = None,
     trade_buffer: float = 0,
     do_trade_to_buffer: bool = False,
+    do_ignore_buffer_on_new: bool = False,
     do_liquidate_on_zero_weight: bool = False,
     commission_func: Callable[[float, float], float] = zero_commission,
     fixed_slippage: float = 0,
@@ -60,12 +60,12 @@ def backtest(
     funding_rates[CASH] = 0
 
     # Portfolio to record the units held of a ticker
-    port_df = like(weights)
+    port = like(weights)
 
     # Final collated result
     midx = pd.MultiIndex.from_product([weights.index, weights.columns])
-    result_df = pd.DataFrame(index=midx, columns=RESULT_KEYS)
-    result_df[:] = 0
+    result = pd.DataFrame(index=midx, columns=RESULT_KEYS)
+    result[:] = 0
 
     # Time periods for the given simulation
     periods = len(weights)
@@ -78,7 +78,7 @@ def backtest(
 
         # Portfolio position at start of period
         # Initialize from starting capital if first period
-        start_port = port_df.iloc[i - 1]
+        start_port = port.iloc[i - 1]
         if i == 0:
             start_port[CASH] = capital
 
@@ -117,11 +117,18 @@ def backtest(
         adj_target_weight = target_weight.copy()
         if do_trade_to_buffer:
             adj_target_weight[do_trade] = [
-                _buffer_target(x, y, trade_buffer) for x, y in zip(target_weight, delta_weight)
+                _buffer_target(x, y, trade_buffer)
+                for x, y in zip(target_weight, delta_weight)
             ]
 
         # If no trade indicated then set adjusted target weight to current weight
         adj_target_weight[~do_trade] = start_weight
+
+        # Open new positions ignoring trade buffer constraint
+        if do_ignore_buffer_on_new:
+            mask = start_weight.eq(0) & (target_weight.abs().le(trade_buffer))
+            do_trade[mask] = True
+            adj_target_weight[mask] = target_weight
 
         # Liquidate open positions in full (do not respect trade buffer)
         if do_liquidate_on_zero_weight:
@@ -135,7 +142,8 @@ def backtest(
         # Calc trades required to achieve adjusted target weight using a fixed slippage factor
         trade_value = adj_delta_weight * capital
         slippage_price = [
-            _slippage_price(x, y, fixed_slippage) for x, y in zip(adj_target_weight, price)
+            _slippage_price(x, y, fixed_slippage)
+            for x, y in zip(adj_target_weight, price)
         ]
         trade_size = trade_value / slippage_price
 
@@ -165,7 +173,7 @@ def backtest(
         end_port[CASH] -= trade_value[do_trade].sum()
         end_port[CASH] += commission[do_trade].sum()
         end_port[CASH] += funding_payment.sum()
-        port_df.iloc[i] = end_port
+        port.iloc[i] = end_port
 
         # Append data for this time period to the result
         period_result = np.array(
@@ -185,9 +193,9 @@ def backtest(
                 end_port,
             ]
         )
-        result_df.loc[weights.index[i]] = period_result.T
+        result.loc[weights.index[i]] = period_result.T
 
-    return result_df
+    return result
 
 
 def _slippage_price(target_weight, price, slippage_pct):
@@ -195,12 +203,13 @@ def _slippage_price(target_weight, price, slippage_pct):
     slippage_price = price
 
     if target_weight > 0:
-        slippage_price *= (1 + slippage_pct)
-    
+        slippage_price *= 1 + slippage_pct
+
     if target_weight < 0:
-        slippage_price *= (1 - slippage_pct)
+        slippage_price *= 1 - slippage_pct
 
     return slippage_price
+
 
 def _buffer_target(target_weight, delta_weight, trade_buffer):
 

@@ -130,3 +130,20 @@ def test_backtest_finalportfolio():
     assert result.loc[(4, "Acme")]["start_portfolio"] == 0
 
     assert True
+
+
+def test_backtest_ignore_buffer_on_new():
+
+    prices = pd.DataFrame([100, 300, 300, 200, 200], columns=["Acme"])
+    weights = pd.DataFrame([0.1, 1.25, -1, -2, 0], columns=["Acme"])
+    result = bt.backtest(
+        prices,
+        weights,
+        trade_buffer=0.25,
+        do_trade_to_buffer=True,
+        do_ignore_buffer_on_new=True,
+    )
+
+    # Open a new position ignoring the trade buffer constraint
+    assert result.loc[(0, bt.CASH)]["end_portfolio"] == 900
+    assert result.loc[(0, "Acme")]["end_portfolio"] == 1
