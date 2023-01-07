@@ -43,7 +43,7 @@ def backtest_stats(
     nav = ((1 + cum_ret) * 100).fillna(100)
     hwm = nav.cummax()
     dd = nav / hwm - 1
-    df["max_drawdown"] = dd
+    df["max_drawdown"] = min(dd)
 
     # Turnover
     ann_mean_equity = summed[bt.EQUITY].mean().squeeze() * years
@@ -104,6 +104,6 @@ def _asset_stats(
     nav = ((1 + cum_ret) * 100).fillna(100)
     hwm = nav.cummax()
     dd = nav / hwm - 1
-    df["max_drawdown"] = dd
+    df["max_drawdown"] = min(dd)
 
     return df
