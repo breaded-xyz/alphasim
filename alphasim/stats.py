@@ -12,33 +12,41 @@ def backtest_stats(
     freq_unit: str = "D",
 ) -> pd.DataFrame:
 
-    sum_df = result.groupby(level=0).sum()
-    start = sum_df.index[0]
-    end = sum_df.index[-1]
+    summed = result.groupby(level=0).sum()
+    start = summed.index[0]
+    end = summed.index[-1]
     days = (end - start).days
     years = days / const.TRADING_DAYS_YEAR
 
-    ret_df = backtest_returns(result)
+    ret = backtest_returns(result)
     ret_per_day = pd.Timedelta(1, unit="D") / pd.Timedelta(freq, unit=freq_unit)
 
     df = pd.DataFrame(index=["result"])
     df["start"] = start
     df["end"] = end
     df["trading_days_year"] = const.TRADING_DAYS_YEAR
-    df["initial"] = sum_df[bt.EQUITY].iloc[0]
-    df["final"] = sum_df[bt.EQUITY].iloc[-1]
+    df["initial"] = summed[bt.EQUITY].iloc[0]
+    df["final"] = summed[bt.EQUITY].iloc[-1]
     df["profit"] = df["final"] - df["initial"]
     df["cagr"] = (df["final"] / df["initial"]) ** (1 / years) - 1
-    df["ann_volatility"] = ret_df.std() * np.sqrt(ret_per_day * const.TRADING_DAYS_YEAR)
+    df["ann_volatility"] = ret.std() * np.sqrt(ret_per_day * const.TRADING_DAYS_YEAR)
     df["ann_sharpe"] = df["cagr"] / df["ann_volatility"]
-    df["commission"] = sum_df["commission"].sum()
-    df["funding_payment"] = sum_df["funding_payment"].sum()
+    df["commission"] = summed["commission"].sum()
+    df["funding_payment"] = summed["funding_payment"].sum()
     df["cost_profit_pct"] = (df["commission"] + df["funding_payment"]) / df["profit"]
     df["trade_count"] = result["do_trade"].sum()
-    df["skew"] = ret_df.skew()
-    df["kurtosis"] = ret_df.kurtosis()
+    df["skew"] = ret.skew()
+    df["kurtosis"] = ret.kurtosis()
 
-    ann_mean_equity = sum_df[bt.EQUITY].mean().squeeze() * years
+    # Max drawdown
+    cum_ret = (1 + ret).cumprod() - 1
+    nav = ((1 + cum_ret) * 100).fillna(100)
+    hwm = nav.cummax()
+    dd = nav / hwm - 1
+    df["max_drawdown"] = dd
+
+    # Turnover
+    ann_mean_equity = summed[bt.EQUITY].mean().squeeze() * years
     buy_value = result["trade_value"].loc[result["trade_size"] > 0].abs().sum()
     sell_value = result["trade_value"].loc[result["trade_size"] < 0].abs().sum()
     tx_value = np.min([buy_value, sell_value])
@@ -91,5 +99,11 @@ def _asset_stats(
     df["trade_count"] = 1
     df["skew"] = ret.skew()
     df["kurtosis"] = ret.kurtosis()
+
+    cum_ret = (1 + ret).cumprod() - 1
+    nav = ((1 + cum_ret) * 100).fillna(100)
+    hwm = nav.cummax()
+    dd = nav / hwm - 1
+    df["max_drawdown"] = dd
 
     return df
