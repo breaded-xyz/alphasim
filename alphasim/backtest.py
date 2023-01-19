@@ -3,7 +3,6 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 
-import alphasim.const as const
 from alphasim.commission import zero_commission
 from alphasim.money import initial_capital
 from alphasim.util import like
@@ -39,8 +38,7 @@ def backtest(
     commission_func: Callable[[float, float], float] = zero_commission,
     fixed_slippage: float = 0,
     initial_capital: float = 1000,
-    money_func: Callable[[float, float], float] = initial_capital,
-    final_portfolio: pd.Series = None,
+    money_func: Callable[[float, float], float] = initial_capital
 ) -> pd.DataFrame:
 
     # Ensure prices and weights have the same dimensions
@@ -82,11 +80,6 @@ def backtest(
         if i == 0:
             start_port[CASH] = capital
 
-        # Intercept final period in order to start it with a user defined portfolio position
-        # Enables backtest to be used as input to real-time execution
-        if (i == periods - 1) and (final_portfolio is not None):
-            start_port = final_portfolio
-
         # Slice to get data for current period
         price = prices.iloc[i]
         funding_rate = funding_rates.iloc[i]
@@ -112,8 +105,7 @@ def backtest(
         # Based on buffer decide if trade should be made
         do_trade = abs(delta_weight) > trade_buffer
 
-        # Default is to trade to the ideal target weight when commission is a fixed minimum or zero
-        # Trade to buffer when commission is a linear pct of trade value (e.g. crypto)
+        # Calculate adjusted target weight based trade buffer params
         adj_target_weight = target_weight.copy()
         if do_trade_to_buffer:
             adj_target_weight[do_trade] = [
@@ -167,12 +159,12 @@ def backtest(
         funding_payment[CASH] = 0
         commission[CASH] = 0
 
-        # Calc post trade portfolio and cash positions
+        # Update portfolio and cash changes
         end_port = start_port.copy()
-        end_port[do_trade] += trade_size[do_trade]
         end_port[CASH] -= trade_value[do_trade].sum()
         end_port[CASH] += commission[do_trade].sum()
         end_port[CASH] += funding_payment.sum()
+        end_port[do_trade] += trade_size[do_trade]
         port.iloc[i] = end_port
 
         # Append data for this time period to the result
