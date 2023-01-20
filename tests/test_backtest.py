@@ -3,25 +3,39 @@ import numpy as np
 import pandas as pd
 
 import alphasim.backtest as bt
-import alphasim.money as mo
+import alphasim.money as mn
 
 
 def test_backtest():
     prices = pd.DataFrame()
     weights = pd.DataFrame()
-    result = bt.backtest(prices, weights)
+    result, _ = bt.backtest(prices, weights)
     assert result is not None
 
 
 def test_backtest_long():
-    assert True
+    prices = pd.DataFrame([10, 15, 30], columns=["Acme"])
+    weights = pd.DataFrame([1, 1, 0], columns=["Acme"])
+    result, _ = bt.backtest(prices, weights, money_func=mn.total_equity)
+
+    # In a long position the trade value is substracted from the cash total
+    assert result.loc[(0, bt.CASH)]["end_portfolio"] == 0
+    assert result.loc[(0, "Acme")]["end_portfolio"] == 100
+
+    # Asset price increased
+    assert result.loc[(1, bt.CASH)][bt.EQUITY] == 0
+    assert result.loc[(1, "Acme")][bt.EQUITY] == 1500
+
+    # Liquidate position and realize gain
+    assert result.loc[2, bt.CASH]["start_portfolio"] == 0
+    assert result.loc[2, bt.CASH]["end_portfolio"] == 3000
 
 
 def test_backtest_short():
 
     prices = pd.DataFrame([10, 15, 30], columns=["Acme"])
     weights = pd.DataFrame([-1, -1, -1], columns=["Acme"])
-    result = bt.backtest(prices, weights)
+    result, _ = bt.backtest(prices, weights)
 
     # In a short position the trade cost is added to the cash total
     assert result.loc[(0, bt.CASH)]["end_portfolio"] == 2000
@@ -40,7 +54,7 @@ def test_backtest_tradetobuffer():
 
     prices = pd.DataFrame([100, 300, 300, 200, 200], columns=["Acme"])
     weights = pd.DataFrame([0.5, 1.25, -1, -2, 0], columns=["Acme"])
-    result = bt.backtest(prices, weights, trade_buffer=0.25, do_trade_to_buffer=True)
+    result, _ = bt.backtest(prices, weights, trade_buffer=0.25, do_trade_to_buffer=True)
 
     # Open a new position but respect the trade buffer.
     assert result.loc[(0, bt.CASH)]["end_portfolio"] == 750
@@ -71,7 +85,7 @@ def test_backtest_fundingrates():
     prices = pd.DataFrame([100, 100, 100, 100, 100], columns=["Acme"])
     weights = pd.DataFrame([1, 1, 1, -1, -1], columns=["Acme"])
     rates = pd.DataFrame([0.1, 0.1, -0.2, -0.2, -0.2], columns=["Acme"])
-    result = bt.backtest(prices, weights, rates)
+    result, _ = bt.backtest(prices, weights, rates)
 
     # Funding is paid on the positions from the previous period, so no impact when i == 0
     assert result.loc[(0, "Acme")]["funding_payment"] == 0
@@ -86,10 +100,6 @@ def test_backtest_fundingrates():
     assert result.loc[(4, "Acme")]["funding_payment"] == 200
 
 
-def test_backtest_tradetoideal():
-    assert True
-
-
 def test_backtest_commission():
     assert True
 
@@ -98,7 +108,7 @@ def test_backtest_reinvest_sqrt():
 
     prices = pd.DataFrame([10, 20, 30], columns=["Acme"])
     weights = pd.DataFrame([1, 1, 1], columns=["Acme"])
-    result = bt.backtest(prices, weights, money_func=mo.sqrt_profit)
+    result, _ = bt.backtest(prices, weights, money_func=mn.sqrt_profit)
 
     assert result.loc[(0, bt.CASH)]["end_portfolio"] == 0
     assert result.loc[(0, "Acme")]["end_portfolio"] == 100
@@ -115,7 +125,7 @@ def test_backtest_ignore_buffer_on_new():
 
     prices = pd.DataFrame([100, 300, 300, 200, 200], columns=["Acme"])
     weights = pd.DataFrame([0.1, 1.25, -1, -2, 0], columns=["Acme"])
-    result = bt.backtest(
+    result, _ = bt.backtest(
         prices,
         weights,
         trade_buffer=0.25,
@@ -126,3 +136,38 @@ def test_backtest_ignore_buffer_on_new():
     # Open a new position ignoring the trade buffer constraint
     assert result.loc[(0, bt.CASH)]["end_portfolio"] == 900
     assert result.loc[(0, "Acme")]["end_portfolio"] == 1
+
+
+def test_backtest_leverage_long():
+    prices = pd.DataFrame([10, 10, 30], columns=["Acme"])
+    weights = pd.DataFrame([1, 2, 0], columns=["Acme"])
+    result, _ = bt.backtest(prices, weights, money_func=mn.total_equity)
+
+    # Initiate long position with leverage 1x
+    assert result.loc[(0, bt.CASH)]["end_portfolio"] == 0
+    assert result.loc[(0, "Acme")]["end_portfolio"] == 100
+
+    # Increase leverage to 2x based on a portfolio NAV of 1000
+    assert result.loc[(1, bt.CASH)]["end_portfolio"] == -1000
+    assert result.loc[(1, "Acme")]["end_portfolio"] == 200
+
+    # Liquidate position and realize leveraged gain
+    assert result.loc[2, bt.CASH]["start_portfolio"] == -1000
+    assert result.loc[2, bt.CASH]["end_portfolio"] == 5000
+
+
+def test_backtest_leverage_short():
+    prices = pd.DataFrame([10, 10, 30], columns=["Acme"])
+    weights = pd.DataFrame([-1, -2, 0], columns=["Acme"])
+    result, rekt = bt.backtest(prices, weights, money_func=mn.total_equity)
+
+    # Initiate short position with leverage 1x
+    assert result.loc[(0, bt.CASH)]["end_portfolio"] == 2000
+    assert result.loc[(0, "Acme")]["end_portfolio"] == -100
+
+    # Increase leverage to 2x based on a portfolio NAV of 1000
+    assert result.loc[(1, bt.CASH)]["end_portfolio"] == 3000
+    assert result.loc[(1, "Acme")]["end_portfolio"] == -200
+
+    # NAV is now less than zero at final period
+    assert rekt

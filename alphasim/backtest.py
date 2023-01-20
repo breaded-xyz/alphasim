@@ -39,7 +39,7 @@ def backtest(
     fixed_slippage: float = 0,
     initial_capital: float = 1000,
     money_func: Callable[[float, float, float], float] = initial_capital,
-) -> pd.DataFrame:
+) -> pd.DataFrame | bool:
 
     # Ensure prices and weights have the same dimensions
     if prices.shape != weights.shape:
@@ -71,6 +71,8 @@ def backtest(
     # Starting capital is initial capital
     capital = initial_capital
 
+    rekt = False
+
     # Step through periods in chronological order
     for i in range(periods):
 
@@ -90,6 +92,7 @@ def backtest(
 
         # Stop simulation if rekt
         if nav <= 0:
+            rekt = True
             break
 
         # Set the investable capital
@@ -189,7 +192,7 @@ def backtest(
         )
         result.loc[weights.index[i]] = period_result.T
 
-    return result
+    return result, rekt
 
 
 def _slippage_price(target_weight, price, slippage_pct):
