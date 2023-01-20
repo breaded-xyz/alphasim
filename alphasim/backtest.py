@@ -38,7 +38,7 @@ def backtest(
     commission_func: Callable[[float, float], float] = zero_commission,
     fixed_slippage: float = 0,
     initial_capital: float = 1000,
-    money_func: Callable[[float, float], float] = initial_capital
+    money_func: Callable[[float, float, float], float] = initial_capital
 ) -> pd.DataFrame:
 
     # Ensure prices and weights have the same dimensions
@@ -93,7 +93,7 @@ def backtest(
             break
 
         # Set the investable capital
-        capital = money_func(initial=initial_capital, total=nav)
+        capital = money_func(initial=initial_capital, cash=equity[CASH], total=nav)
 
         # Calc current portfolio weight based on risk capital
         start_weight = equity / capital

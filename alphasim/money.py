@@ -1,14 +1,14 @@
 import numpy as np
 
 
-def initial_capital(initial: float = 0, total: float = 0) -> float:
+def initial_capital(initial, cash, total: float) -> float:
     return initial
 
 
-def total_equity(initial: float = 0, total: float = 0) -> float:
+def total_equity(initial, cash, total: float) -> float:
     return total
 
 
-def sqrt_profit(initial: float = 0, total: float = 0) -> float:
+def sqrt_profit(initial, cash, total: float) -> float:
     profit = total - initial
     return initial * np.sqrt(1 + (profit / initial))
