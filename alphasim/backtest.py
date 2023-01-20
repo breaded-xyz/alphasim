@@ -93,8 +93,7 @@ def backtest(
             break
 
         # Set the investable capital
-        settled_cash = equity[CASH] - equity.drop(CASH)[start_port.lt(0)].sum()
-        capital = money_func(initial=initial_capital, cash=settled_cash, total=nav)
+        capital = money_func(initial=initial_capital, cash=equity[CASH], total=nav)
 
         # Calc current portfolio weight based on risk capital
         start_weight = equity / capital
@@ -162,9 +161,11 @@ def backtest(
 
         # Update portfolio and cash changes
         end_port = start_port.copy()
-        end_port[CASH] -= trade_value[do_trade].sum()
-        end_port[CASH] += commission[do_trade].sum()
-        end_port[CASH] += funding_payment.sum()
+        end_port[CASH] += (
+            trade_value[do_trade].mul(-1).sum()
+            + commission[do_trade].sum()
+            + funding_payment.sum()
+        )
         end_port[do_trade] += trade_size[do_trade]
         port.iloc[i] = end_port
 
@@ -215,3 +216,7 @@ def _buffer_target(target_weight, delta_weight, trade_buffer):
         buffer_target += trade_buffer
 
     return buffer_target
+
+
+def _execute_trade():
+    return 0
