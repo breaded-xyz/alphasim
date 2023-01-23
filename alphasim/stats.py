@@ -21,16 +21,26 @@ def backtest_stats(
     ret = backtest_returns(result)
     ret_per_day = pd.Timedelta(1, unit="D") / pd.Timedelta(freq, unit=freq_unit)
 
+    initial = summed[bt.EQUITY].iloc[0]
+    final = summed[bt.EQUITY].iloc[-1]
+    cagr = (final / initial) ** (1 / years) - 1
+    vol = ret.std() * np.sqrt(ret_per_day * const.TRADING_DAYS_YEAR)
+    sr = cagr / vol
+
     df = pd.DataFrame(index=["result"])
     df["start"] = start
     df["end"] = end
     df["trading_days_year"] = const.TRADING_DAYS_YEAR
-    df["initial"] = summed[bt.EQUITY].iloc[0]
-    df["final"] = summed[bt.EQUITY].iloc[-1]
-    df["profit"] = df["final"] - df["initial"]
-    df["cagr"] = (df["final"] / df["initial"]) ** (1 / years) - 1
-    df["ann_volatility"] = ret.std() * np.sqrt(ret_per_day * const.TRADING_DAYS_YEAR)
-    df["ann_sharpe"] = df["cagr"] / df["ann_volatility"]
+    df["price_freq"] = f"{freq}{freq_unit}"
+    df["risk_free_rate"] = const.RISK_FREE_RATE
+    df["initial"] = initial
+    df["final"] = final
+    df["profit"] = final - initial
+    df["cagr"] = cagr
+    df["ann_volatility"] = vol
+    df["ann_sharpe"] = sr
+    df["kelly_f"] = cagr / (vol**2)
+    df["kelly_f_cagr"] = (sr**2) / 2
     df["commission"] = summed["commission"].sum()
     df["funding_payment"] = summed["funding_payment"].sum()
     df["cost_profit_pct"] = (df["commission"] + df["funding_payment"]) / df["profit"]
@@ -45,7 +55,6 @@ def backtest_stats(
     dd = nav / hwm - 1
     df["max_drawdown"] = dd.min()
 
-
     # Turnover
     ann_mean_equity = summed[bt.EQUITY].mean().squeeze() * years
     buy_value = result["trade_value"].loc[result["trade_size"] > 0].abs().sum()
@@ -55,7 +64,7 @@ def backtest_stats(
 
     if benchmark is not None:
         benchmark_stats = _asset_stats(
-            benchmark, initial=df["initial"].squeeze(), freq=freq, freq_unit=freq_unit
+            benchmark, initial=initial, freq=freq, freq_unit=freq_unit
         )
         df = pd.concat(
             [benchmark_stats, df], join="outer", keys=["benchmark", "backtest"]
@@ -91,6 +100,8 @@ def _asset_stats(
     df["start"] = start
     df["end"] = end
     df["trading_days_year"] = const.TRADING_DAYS_YEAR
+    df["price_freq"] = f"{freq}{freq_unit}"
+    df["risk_free_rate"] = const.RISK_FREE_RATE
     df["initial"] = initial
     df["final"] = prices.iloc[-1].squeeze() * port_units
     df["profit"] = df["final"] - df["initial"]
