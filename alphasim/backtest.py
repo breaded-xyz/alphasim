@@ -31,6 +31,7 @@ def backtest(
     prices: pd.DataFrame,
     weights: pd.DataFrame,
     funding_rates: pd.DataFrame = None,
+    do_calc_funding_on_abs_position: bool = False,
     trade_buffer: float = 0,
     do_trade_to_buffer: bool = False,
     do_ignore_buffer_on_new: bool = False,
@@ -144,7 +145,10 @@ def backtest(
 
         # Calc funding payments
         funding_payment = like(equity)
-        funding_payment = equity * funding_rate
+        if do_calc_funding_on_abs_position:
+            funding_payment = equity.abs() * funding_rate
+        else:
+            funding_payment = equity * funding_rate
 
         # Calc commission for the traded tickers using the given commission func
         commission = like(trade_value)
