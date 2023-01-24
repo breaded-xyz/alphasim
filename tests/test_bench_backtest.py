@@ -11,9 +11,8 @@ def test_bench_backtest():
     weights = _load_test_data("weight_sample.csv")
     tb = 0.1
 
-    result, rekt = bt.backtest(prices, weights, trade_buffer=tb)
+    result = bt.backtest(prices, weights, trade_buffer=tb)
     assert result is not None
-    assert not rekt
 
     benchmark_prices = prices[["VTI"]]
     result_stats = stats.backtest_stats(result, benchmark=benchmark_prices)

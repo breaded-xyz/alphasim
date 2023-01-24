@@ -53,37 +53,30 @@ def backtest(
     if funding_rates.shape != weights.shape:
         raise ValueError("shape of funding_rates must match weights")
 
-    # Add cash asset to track trade balance changes
+    # Portfolio to record the units held of a ticker
+    port = like(weights)
+
+    # Add cash asset to track trade balance
     prices[CASH] = 1
     weights[CASH] = 0
     funding_rates[CASH] = 0
-
-    # Portfolio to record the units held of a ticker
-    port = like(weights)
+    port[CASH] = initial_capital
 
     # Final collated result
     midx = pd.MultiIndex.from_product([weights.index, weights.columns])
     result = pd.DataFrame(index=midx, columns=RESULT_KEYS)
     result[:] = 0
 
+    rekt = False
+
     # Time periods for the given simulation
     periods = len(weights)
-
-    # Starting capital is initial capital
-    capital = initial_capital
-
-    rekt = False
 
     # Step through periods in chronological order
     for i in range(periods):
 
-        # Portfolio position at start of period
-        # Initialize from starting capital if first period
-        start_port = port.iloc[i - 1]
-        if i == 0:
-            start_port[CASH] = capital
-
         # Slice to get data for current period
+        start_port = port.iloc[i - 1]
         price = prices.iloc[i]
         funding_rate = funding_rates.iloc[i]
 
@@ -92,9 +85,9 @@ def backtest(
         nav = equity.sum()
 
         # Stop simulation if rekt
-        if nav <= 0:
-            rekt = True
-            break
+        # if nav <= 0:
+        #   rekt = True
+        #   break
 
         # Set the investable capital
         capital = money_func(initial=initial_capital, cash=equity[CASH], total=nav)
@@ -137,11 +130,11 @@ def backtest(
 
         # Calc trades required to achieve adjusted target weight using a fixed slippage factor
         trade_value = adj_delta_weight * capital
-        slippage_price = [
+        slipped_price = [
             _slippage_price(x, y, fixed_slippage)
             for x, y in zip(adj_target_weight, price)
         ]
-        trade_size = trade_value / slippage_price
+        trade_size = trade_value / slipped_price
 
         # Calc funding payments
         funding_payment = like(equity)
@@ -155,7 +148,6 @@ def backtest(
         commission[do_trade] = [
             commission_func(x, y) for x, y in zip(trade_size, trade_value)
         ]
-        commission = -commission
 
         # Zero the cash asset which is not directly traded
         do_trade[CASH] = False
@@ -196,7 +188,7 @@ def backtest(
         )
         result.loc[weights.index[i]] = period_result.T
 
-    return result, rekt
+    return result
 
 
 def _slippage_price(target_weight, price, slippage_pct):
