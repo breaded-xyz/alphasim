@@ -67,8 +67,6 @@ def backtest(
     result = pd.DataFrame(index=midx, columns=RESULT_KEYS)
     result[:] = 0
 
-    rekt = False
-
     # Time periods for the given simulation
     periods = len(weights)
 
@@ -85,9 +83,8 @@ def backtest(
         nav = equity.sum()
 
         # Stop simulation if rekt
-        # if nav <= 0:
-        #   rekt = True
-        #   break
+        if nav <= 0:
+            break
 
         # Set the investable capital
         capital = money_func(initial=initial_capital, cash=equity[CASH], total=nav)
@@ -215,7 +212,3 @@ def _buffer_target(target_weight, delta_weight, trade_buffer):
         buffer_target += trade_buffer
 
     return buffer_target
-
-
-def _execute_trade():
-    return 0
