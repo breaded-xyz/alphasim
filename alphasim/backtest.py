@@ -1,3 +1,4 @@
+import logging
 from typing import Callable
 
 import numpy as np
@@ -130,7 +131,7 @@ def backtest(
             _slippage_price(x, y, fixed_slippage)
             for x, y in zip(adj_delta_weight, price)
         ]
-        trade_size = trade_value / slipped_price
+        trade_size = (trade_value / slipped_price).fillna(0)
 
         # Calc funding payments
         funding_payment = like(equity)
