@@ -5,7 +5,6 @@ import os
 import alphasim.backtest as bt
 import alphasim.stats as stats
 
-
 def test_bench_backtest():
     prices = _load_test_data("price_sample.csv")
     weights = _load_test_data("weight_sample.csv")

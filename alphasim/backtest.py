@@ -125,7 +125,8 @@ def backtest(
         # Calc trades required to achieve adjusted target weight
         # using a fixed slippage factor
         trade_value = adj_delta_weight * capital
-        slipped_price = [
+        slipped_price = like(price)
+        slipped_price[:] = [
             _slippage_price(x, y, fixed_slippage)
             for x, y in zip(adj_delta_weight, price)
         ]
@@ -181,9 +182,8 @@ def backtest(
     return result
 
 def _zero_cash(x: pd.Series) -> pd.Series:
-    zc = x.copy()
-    zc[CASH] = 0
-    return zc
+    x[CASH] = 0
+    return x
 
 def _slippage_price(delta_weight, price, slippage_pct):
 
