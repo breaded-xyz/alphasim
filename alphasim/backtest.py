@@ -107,7 +107,7 @@ def backtest(
         adj_delta_weight = target_weight.copy()
         adj_delta_weight[:] = [
             _buffered_delta(x, y, trade_buffer) 
-            for x, y in zip(target_weight, start_weight)
+            for x, y in zip(target_weight, _zero_cash(start_weight))
         ]
 
         # Open new positions ignoring trade buffer constraint
@@ -178,15 +178,19 @@ def backtest(
 
     return result
 
+def _zero_cash(x: pd.Series) -> pd.Series:
+    zc = x.copy()
+    zc[CASH] = 0
+    return zc
 
-def _slippage_price(target_weight, price, slippage_pct):
+def _slippage_price(delta_weight, price, slippage_pct):
 
     slippage_price = price
 
-    if target_weight > 0:
+    if delta_weight > 0:
         slippage_price *= 1 + slippage_pct
 
-    if target_weight < 0:
+    if delta_weight < 0:
         slippage_price *= 1 - slippage_pct
 
     return slippage_price
