@@ -112,7 +112,7 @@ def backtest(
 
         # Open new positions ignoring trade buffer constraint
         if do_ignore_buffer_on_new:
-            mask = start_weight.eq(0)
+            mask = start_weight.eq(0) & target_weight.abs().gt(0)
             mask[CASH] = False
             adj_delta_weight[mask] = target_weight
 
