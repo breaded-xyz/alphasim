@@ -118,7 +118,7 @@ def backtest(
 
         # Liquidate open positions in full (do not respect trade buffer)
         if do_liquidate_on_zero_weight:
-            mask = target_weight.eq(0)
+            mask = target_weight.eq(0) & start_weight.abs().gt(0)
             mask[CASH] = False
             adj_delta_weight[mask] = target_weight - start_weight
 
