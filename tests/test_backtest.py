@@ -1,7 +1,10 @@
+from functools import partial
+
 import pandas as pd
 
 import alphasim.backtest as bt
 import alphasim.money as mn
+import alphasim.commission as cn
 
 def test_backtest_long():
     prices = pd.DataFrame([10, 15, 30], columns=["Acme"])
@@ -87,9 +90,31 @@ def test_backtest_fundingrates():
     # Now short on negative funding so get paid
     assert result.loc[(4, "Acme")]["funding_payment"] == 200
 
+def test_backtest_abs_fundingrates():
+
+    prices = pd.DataFrame([100, 100, 100, 100, 100], columns=["Acme"])
+    weights = pd.DataFrame([1, 1, 1, -1, -1], columns=["Acme"])
+    rates = pd.DataFrame([-0.1, -0.1, -0.2, -0.2, -0.2], columns=["Acme"])
+    result = bt.backtest(prices, weights, rates, do_calc_funding_on_abs_position=True)
+
+    # Funding is paid on the positions from the previous period, 
+    # so no impact when i == 0
+    assert result.loc[(0, "Acme")]["funding_payment"] == 0
+
+    # In abs mode the sign of the position is ignored
+    assert result.loc[(1, "Acme")]["funding_payment"] == -100
+    assert result.loc[(2, "Acme")]["funding_payment"] == -200
+    assert result.loc[(4, "Acme")]["funding_payment"] == -200
 
 def test_backtest_commission():
-    assert True
+
+    prices = pd.DataFrame([10, 15, 30], columns=["Acme"])
+    weights = pd.DataFrame([0.5, 1, 0], columns=["Acme"])
+
+    cmn = partial(cn.linear_pct_commission, pct_commission=0.1)
+    result = bt.backtest(prices, weights, commission_func=cmn)
+
+    assert result.loc[(0, bt.CASH)]["end_portfolio"] == 450
 
 
 def test_backtest_ignore_buffer_on_new():
@@ -107,6 +132,19 @@ def test_backtest_ignore_buffer_on_new():
     assert result.loc[(0, bt.CASH)]["end_portfolio"] == 900
     assert result.loc[(0, "Acme")]["end_portfolio"] == 1
 
+def test_backtest_liquidate_on_zero_weight():
+
+    prices = pd.DataFrame([100, 100], columns=["Acme"])
+    weights = pd.DataFrame([0.1, 0], columns=["Acme"])
+    result = bt.backtest(
+        prices,
+        weights,
+        trade_buffer=0.25,
+        do_liquidate_on_zero_weight=True
+    )
+
+    assert result.loc[(1, bt.CASH)]["end_portfolio"] == 1000
+    assert result.loc[(1, "Acme")]["end_portfolio"] == 0
 
 def test_backtest_leverage_long():
     prices = pd.DataFrame([10, 10, 30], columns=["Acme"])

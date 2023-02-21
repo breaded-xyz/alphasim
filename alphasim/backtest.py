@@ -112,12 +112,14 @@ def backtest(
 
         # Open new positions ignoring trade buffer constraint
         if do_ignore_buffer_on_new:
-            mask = start_weight.eq(0) & (target_weight.abs().le(trade_buffer))
+            mask = start_weight.eq(0)
+            mask[CASH] = False
             adj_delta_weight[mask] = target_weight
 
         # Liquidate open positions in full (do not respect trade buffer)
         if do_liquidate_on_zero_weight:
-            mask = start_weight.abs().gt(0) & target_weight.eq(0)
+            mask = target_weight.eq(0)
+            mask[CASH] = False
             adj_delta_weight[mask] = start_weight
 
         # Calc trades required to achieve adjusted target weight
