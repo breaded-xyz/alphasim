@@ -120,7 +120,7 @@ def backtest(
         if do_liquidate_on_zero_weight:
             mask = target_weight.eq(0) & start_weight.abs().gt(0)
             mask[CASH] = False
-            adj_delta_weight[mask] = target_weight - start_weight
+            adj_delta_weight[mask] = start_weight.mul(-1)
 
         # Calc trades required to achieve adjusted target weight
         # using a fixed slippage factor
