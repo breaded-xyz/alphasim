@@ -10,27 +10,28 @@ def backtest_stats(
     benchmark: pd.DataFrame = None,
     freq: int = 1,
     freq_unit: str = "D",
+    trading_days_year: int = const.TRADING_DAYS_YEAR,
 ) -> pd.DataFrame:
 
-    summed = result.groupby(level=0).sum()
-    start = summed.index[0]
-    end = summed.index[-1]
+    summary = result.groupby(level=0).sum()
+    start = summary.index[0]
+    end = summary.index[-1]
     days = (end - start).days
-    years = days / const.TRADING_DAYS_YEAR
+    years = days / trading_days_year
 
     ret = backtest_returns(result)
     ret_per_day = pd.Timedelta(1, unit="D") / pd.Timedelta(freq, unit=freq_unit)
 
-    initial = summed[bt.EQUITY].iloc[0]
-    final = summed[bt.EQUITY].iloc[-1]
+    initial = summary[bt.EQUITY].iloc[0]
+    final = summary[bt.EQUITY].iloc[-1]
     cagr = (final / initial) ** (1 / years) - 1
-    vol = ret.std() * np.sqrt(ret_per_day * const.TRADING_DAYS_YEAR)
+    vol = ret.std() * np.sqrt(ret_per_day * trading_days_year)
     sr = cagr / vol
 
     df = pd.DataFrame(index=["result"])
     df["start"] = start
     df["end"] = end
-    df["trading_days_year"] = const.TRADING_DAYS_YEAR
+    df["trading_days_year"] = trading_days_year
     df["price_freq"] = f"{freq}{freq_unit}"
     df["risk_free_rate"] = const.RISK_FREE_RATE
     df["initial"] = initial
@@ -41,8 +42,8 @@ def backtest_stats(
     df["ann_sharpe"] = sr
     df["kelly_f"] = cagr / (vol**2)
     df["kelly_f_cagr"] = (sr**2) / 2
-    df["commission"] = summed["commission"].sum()
-    df["funding_payment"] = summed["funding_payment"].sum()
+    df["commission"] = summary["commission"].sum()
+    df["funding_payment"] = summary["funding_payment"].sum()
     df["cost_profit_pct"] = (df["commission"] + df["funding_payment"]) / df["profit"]
     df["trade_count"] = result["do_trade"].sum()
     df["skew"] = ret.skew()
@@ -56,7 +57,7 @@ def backtest_stats(
     df["max_drawdown"] = dd.min()
 
     # Turnover
-    ann_mean_equity = summed[bt.EQUITY].mean().squeeze() * years
+    ann_mean_equity = summary[bt.EQUITY].mean().squeeze() * years
     buy_value = result["trade_value"].loc[result["trade_size"] > 0].abs().sum()
     sell_value = result["trade_value"].loc[result["trade_size"] < 0].abs().sum()
     tx_value = np.min([buy_value, sell_value])
@@ -83,13 +84,14 @@ def backtest_log_returns(result: pd.DataFrame) -> pd.DataFrame:
 
 
 def _asset_stats(
-    prices: pd.DataFrame, initial: float = 1000, freq: int = 1, freq_unit: str = "D"
+    prices: pd.DataFrame, initial: float = 1000, freq: int = 1, freq_unit: str = "D",
+    trading_days_year: int = const.TRADING_DAYS_YEAR
 ) -> pd.DataFrame:
 
     start = prices.index[0]
     end = prices.index[-1]
     days = (end - start).days
-    years = days / const.TRADING_DAYS_YEAR
+    years = days / trading_days_year
 
     ret = prices.pct_change()
     ret_per_day = pd.Timedelta(1, unit="D") / pd.Timedelta(freq, unit=freq_unit)
@@ -99,14 +101,14 @@ def _asset_stats(
     df = pd.DataFrame(index=[prices.columns[0]])
     df["start"] = start
     df["end"] = end
-    df["trading_days_year"] = const.TRADING_DAYS_YEAR
+    df["trading_days_year"] = trading_days_year
     df["price_freq"] = f"{freq}{freq_unit}"
     df["risk_free_rate"] = const.RISK_FREE_RATE
     df["initial"] = initial
     df["final"] = prices.iloc[-1].squeeze() * port_units
     df["profit"] = df["final"] - df["initial"]
     df["cagr"] = (df["final"] / df["initial"]) ** (1 / years) - 1
-    df["ann_volatility"] = ret.std() * np.sqrt(ret_per_day * const.TRADING_DAYS_YEAR)
+    df["ann_volatility"] = ret.std() * np.sqrt(ret_per_day * trading_days_year)
     df["ann_sharpe"] = df["cagr"] / df["ann_volatility"]
     df["trade_count"] = 1
     df["skew"] = ret.skew()

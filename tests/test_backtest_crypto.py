@@ -15,7 +15,9 @@ def test_backtest_crypto():
     assert result is not None
 
     benchmark_prices = prices[["BTCUSDT"]]
-    result_stats = stats.backtest_stats(result, benchmark=benchmark_prices)
+    result_stats = stats.backtest_stats(
+        result, benchmark=benchmark_prices, 
+        freq=12, freq_unit="H", trading_days_year=365)
 
     assert result.loc[:,"start_portfolio"].isna().sum().sum() == 0
 
