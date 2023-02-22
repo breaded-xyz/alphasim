@@ -17,14 +17,15 @@ def backtest_stats(
     start = summary.index[0]
     end = summary.index[-1]
     days = (end - start).days
-    years = days / trading_days_year
+
+    cal_years = days / const.CALENDAR_DAYS_YEAR
 
     ret = backtest_returns(result)
     ret_per_day = pd.Timedelta(1, unit="D") / pd.Timedelta(freq, unit=freq_unit)
 
     initial = summary[bt.EQUITY].iloc[0]
     final = summary[bt.EQUITY].iloc[-1]
-    cagr = (final / initial) ** (1 / years) - 1
+    cagr = (final / initial) ** (1 / cal_years) - 1
     vol = ret.std() * np.sqrt(ret_per_day * trading_days_year)
     sr = cagr / vol
 
@@ -57,7 +58,7 @@ def backtest_stats(
     df["max_drawdown"] = dd.min()
 
     # Turnover
-    ann_mean_equity = summary[bt.EQUITY].mean().squeeze() * years
+    ann_mean_equity = summary[bt.EQUITY].mean().squeeze() * cal_years
     buy_value = result["trade_value"].loc[result["trade_size"] > 0].abs().sum()
     sell_value = result["trade_value"].loc[result["trade_size"] < 0].abs().sum()
     tx_value = np.min([buy_value, sell_value])
@@ -65,7 +66,8 @@ def backtest_stats(
 
     if benchmark is not None:
         benchmark_stats = _asset_stats(
-            benchmark, initial=initial, freq=freq, freq_unit=freq_unit
+            benchmark, initial=initial, 
+            freq=freq, freq_unit=freq_unit, trading_days_year=trading_days_year
         )
         df = pd.concat(
             [benchmark_stats, df], join="outer", keys=["benchmark", "backtest"]
@@ -91,7 +93,8 @@ def _asset_stats(
     start = prices.index[0]
     end = prices.index[-1]
     days = (end - start).days
-    years = days / trading_days_year
+
+    cal_years = days / trading_days_year
 
     ret = prices.pct_change()
     ret_per_day = pd.Timedelta(1, unit="D") / pd.Timedelta(freq, unit=freq_unit)
@@ -107,7 +110,7 @@ def _asset_stats(
     df["initial"] = initial
     df["final"] = prices.iloc[-1].squeeze() * port_units
     df["profit"] = df["final"] - df["initial"]
-    df["cagr"] = (df["final"] / df["initial"]) ** (1 / years) - 1
+    df["cagr"] = (df["final"] / df["initial"]) ** (1 / cal_years) - 1
     df["ann_volatility"] = ret.std() * np.sqrt(ret_per_day * trading_days_year)
     df["ann_sharpe"] = df["cagr"] / df["ann_volatility"]
     df["trade_count"] = 1
