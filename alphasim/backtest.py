@@ -90,14 +90,14 @@ def backtest(
 
         # Mark-to-market the portfolio
         equity = (start_port * price)
-        gross = equity.sum()
+        total = equity.sum()
 
         # Stop simulation if rekt
-        if gross <= 0:
+        if total <= 0:
             break
 
         # Set the investable capital
-        capital = money_func(initial=initial_capital, total=gross)
+        capital = money_func(initial=initial_capital, total=total)
 
         # Prepare starting and target weights
         start_weight = equity / capital

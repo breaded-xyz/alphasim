@@ -15,3 +15,7 @@ def like(source):
             copied = np.zeros(source.shape, dtype=np.float64)
 
     return copied
+
+def weights(x: pd.Series) -> pd.Series:
+    weights = x.abs() / x.abs().sum()
+    return np.copysign(weights, x)
