@@ -5,7 +5,7 @@ import pandas as pd
 
 from alphasim.commission import zero_commission
 from alphasim.money import initial_capital
-from alphasim.util import like
+from alphasim.util import like, norm
 
 
 CASH = "cash"
@@ -100,35 +100,36 @@ def backtest(
         capital = money_func(initial=initial_capital, total=total)
 
         # Prepare starting and target weights
-        start_weight = equity / capital
+        start_weight = norm(_zero_cash(equity.copy())).fillna(0)
         target_weight = weights.iloc[i]
 
-        # Calculate adjusted delta weights using trade buffer
-        adj_delta_weight = target_weight.copy()
-        adj_delta_weight[:] = [
-            _buffered_delta(x, y, trade_buffer) 
-            for x, y in zip(target_weight, _zero_cash(start_weight))
+        adj_target_weight = target_weight.copy()
+        adj_target_weight[:] = [
+            _buffered_target(x, y, trade_buffer) 
+            for x, y in zip(target_weight, start_weight)
         ]
-
+        
         # Open new positions ignoring trade buffer constraint
         if do_ignore_buffer_on_new:
-            mask = start_weight.eq(0) & target_weight.abs().le(trade_buffer)
+            mask = target_weight.abs().gt(0) & start_port.eq(0)
             mask[CASH] = False
-            adj_delta_weight[mask] = target_weight
+            adj_target_weight[mask] = target_weight
 
         # Liquidate open positions in full (do not respect trade buffer)
         if do_liquidate_on_zero_weight:
-            mask = target_weight.eq(0) & start_weight.abs().gt(0)
+            mask = target_weight.eq(0) & start_port.abs().gt(0)
             mask[CASH] = False
-            adj_delta_weight[mask] = start_weight.mul(-1)
+            adj_target_weight[mask] = 0
+        
+        target_amount = adj_target_weight * capital
+        trade_value = target_amount - equity
 
         # Calc trades required to achieve adjusted target weight
         # using a fixed slippage factor
-        trade_value = adj_delta_weight * capital
         slipped_price = like(price)
         slipped_price[:] = [
             _slippage_price(x, y, fixed_slippage)
-            for x, y in zip(adj_delta_weight, price)
+            for x, y in zip(trade_value, price)
         ]
         trade_size = (trade_value / slipped_price).fillna(0)
 
@@ -166,7 +167,7 @@ def backtest(
                 equity,
                 start_weight,
                 target_weight,
-                adj_delta_weight,
+                adj_target_weight,
                 do_trade,
                 trade_value,
                 trade_size,
@@ -185,25 +186,26 @@ def _zero_cash(x: pd.Series) -> pd.Series:
     x[CASH] = 0
     return x
 
-def _slippage_price(delta_weight, price, slippage_pct):
+def _slippage_price(delta, price, slippage_pct):
 
     slippage_price = price
 
-    if delta_weight > 0:
+    if delta > 0:
         slippage_price *= 1 + slippage_pct
 
-    if delta_weight < 0:
+    if delta < 0:
         slippage_price *= 1 - slippage_pct
 
     return slippage_price
 
-def _buffered_delta(x, y, b) -> float:
-    delta = 0
+def _buffered_target(x, y, b) -> float:
+    target = y
 
     if y < (x - b):
-        delta = (x - b) - y
-
+        target = x - b
+    
     if y > (x + b):
-        delta = (x + b) - y
+        target = x + b
 
-    return delta
+
+    return target
