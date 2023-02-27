@@ -16,7 +16,3 @@ def like(source):
 
     return copied
 
-def norm(x: pd.Series) -> pd.Series:
-    weights = x.abs()
-    weights = x / x.sum()
-    return np.copysign(weights, x)
