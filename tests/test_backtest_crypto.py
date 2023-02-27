@@ -1,3 +1,5 @@
+from functools import partial
+
 import numpy as np
 import pandas as pd
 import os
@@ -5,6 +7,8 @@ import os
 import alphasim.backtest as bt
 import alphasim.stats as stats
 import alphasim.money as mn
+import alphasim.commission as cm
+
 
 def test_backtest_crypto():
     prices = _load_test_data("crypto_prices.csv")
@@ -12,15 +16,26 @@ def test_backtest_crypto():
     funding = _load_test_data("crypto_funding.csv")
     tb = 0.05
 
-    result = bt.backtest(prices, weights, funding, trade_buffer=tb, money_func=mn.total_equity)
+    result = bt.backtest(
+        prices, weights, funding, trade_buffer=tb, 
+        money_func=mn.total_equity,
+        commission_func=partial(cm.linear_pct_commission, pct_commission=0.001),
+        ignore_buffer_on_new=True,
+        ignore_buffer_on_zero=True,
+        funding_on_abs_position=True
+    )
     assert result is not None
 
     benchmark_prices = prices[["BTCUSDT"]]
     result_stats = stats.backtest_stats(
-        result, benchmark=benchmark_prices, 
-        freq=12, freq_unit="H", trading_days_year=365)
+        result,
+        benchmark=benchmark_prices,
+        freq=12,
+        freq_unit="H",
+        trading_days_year=365,
+    )
 
-    assert result.loc[:,"start_portfolio"].isna().sum().sum() == 0
+    assert result.loc[:, "start_portfolio"].isna().sum().sum() == 0
 
     print(result_stats)
 

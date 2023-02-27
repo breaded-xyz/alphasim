@@ -3,9 +3,10 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 
+from alphasim.allocation import allocate
 from alphasim.commission import zero_commission
 from alphasim.money import initial_capital
-from alphasim.util import like, norm
+from alphasim.util import like
 
 
 CASH = "cash"
@@ -17,8 +18,9 @@ RESULT_KEYS = [
     "equity",
     "start_weight",
     "target_weight",
+    "adj_target_weight",
     "adj_delta_weight",
-    "do_trade",
+    "is_trade",
     "trade_value",
     "trade_size",
     "funding_payment",
@@ -31,10 +33,10 @@ def backtest(
     prices: pd.DataFrame,
     weights: pd.DataFrame,
     funding_rates: pd.DataFrame = None,
-    do_calc_funding_on_abs_position: bool = False,
+    funding_on_abs_position: bool = False,
     trade_buffer: float = 0,
-    do_ignore_buffer_on_new: bool = False,
-    do_liquidate_on_zero_weight: bool = False,
+    ignore_buffer_on_new: bool = False,
+    ignore_buffer_on_zero: bool = False,
     commission_func: Callable[[float, float], float] = zero_commission,
     fixed_slippage: float = 0,
     initial_capital: float = 1000,
@@ -43,7 +45,7 @@ def backtest(
 
     if len(prices) == 0:
         raise ValueError("prices length must be greater than 0")
-    
+
     if len(weights) == 0:
         raise ValueError("weights length must be greater than 0")
 
@@ -89,74 +91,67 @@ def backtest(
         funding_rate = funding_rates.iloc[i]
 
         # Mark-to-market the portfolio
-        equity = (start_port * price)
+        equity = start_port * price
         total = equity.sum()
 
         # Stop simulation if rekt
         if total <= 0:
             break
 
-        # Set the investable capital
+        # Set the investable capital used during allocation
         capital = money_func(initial=initial_capital, total=total)
 
-        # Prepare starting and target weights
-        start_weight = norm(_zero_cash(equity.copy())).fillna(0)
-        target_weight = weights.iloc[i]
+        # Allocate to the portfolio using the latest target weights
+        rebal = allocate(
+            capital,
+            equity,
+            weights.iloc[i],
+            trade_buffer,
+            ignore_buffer_on_new,
+            ignore_buffer_on_zero,
+            CASH,
+        )
+        (
+            start_weight,
+            target_weight,
+            adj_target_weight,
+            adj_delta_weight,
+            trade_value,
+        ) = rebal
 
-        adj_target_weight = target_weight.copy()
-        adj_target_weight[:] = [
-            _buffered_target(x, y, trade_buffer) 
-            for x, y in zip(target_weight, start_weight)
-        ]
-        
-        # Open new positions ignoring trade buffer constraint
-        if do_ignore_buffer_on_new:
-            mask = target_weight.abs().gt(0) & start_port.eq(0)
-            mask[CASH] = False
-            adj_target_weight[mask] = target_weight
-
-        # Liquidate open positions in full (do not respect trade buffer)
-        if do_liquidate_on_zero_weight:
-            mask = target_weight.eq(0) & start_port.abs().gt(0)
-            mask[CASH] = False
-            adj_target_weight[mask] = 0
-        
-        target_amount = adj_target_weight * capital
-        trade_value = target_amount - equity
-
-        # Calc trades required to achieve adjusted target weight
-        # using a fixed slippage factor
+        # Calc trade size using a fixed slippage factor
         slipped_price = like(price)
         slipped_price[:] = [
-            _slippage_price(x, y, fixed_slippage)
-            for x, y in zip(trade_value, price)
+            _slippage_price(x, y, fixed_slippage) for x, y in zip(trade_value, price)
         ]
         trade_size = (trade_value / slipped_price).fillna(0)
 
         # Calc funding payments
         funding_payment = like(equity)
-        if do_calc_funding_on_abs_position:
+        if funding_on_abs_position:
             funding_payment = equity.abs() * funding_rate
         else:
             funding_payment = equity * funding_rate
 
         # Calc commission for the traded tickers using the given commission func
         commission = like(trade_value)
-        commission[:] = [
-            commission_func(x, y) for x, y in zip(trade_size, trade_value)
-        ]
+        commission[:] = [commission_func(x, y) for x, y in zip(trade_size, trade_value)]
+
+        # Zero out any cash values
+        trade_value[CASH] = 0
+        trade_size[CASH] = 0
+        commission[CASH] = 0
+        funding_payment[CASH] = 0
 
         # Update portfolio and cash positions
         end_port = start_port.copy()
         end_port += trade_size
         end_port[CASH] += (
-            trade_value.mul(-1).sum()
-            + commission.sum()
-            + funding_payment.sum()
+            trade_value.mul(-1).sum() + commission.sum() + funding_payment.sum()
         )
 
         # Create mask to indicate if the asset is traded to aid later analysis
-        do_trade = trade_size.abs().gt(0)
+        is_trade = trade_size.abs().gt(0)
 
         # Append data for this time period to the result
         period_result = np.array(
@@ -168,7 +163,8 @@ def backtest(
                 start_weight,
                 target_weight,
                 adj_target_weight,
-                do_trade,
+                adj_delta_weight,
+                is_trade,
                 trade_value,
                 trade_size,
                 funding_payment,
@@ -182,9 +178,6 @@ def backtest(
 
     return result
 
-def _zero_cash(x: pd.Series) -> pd.Series:
-    x[CASH] = 0
-    return x
 
 def _slippage_price(delta, price, slippage_pct):
 
@@ -197,15 +190,3 @@ def _slippage_price(delta, price, slippage_pct):
         slippage_price *= 1 - slippage_pct
 
     return slippage_price
-
-def _buffered_target(x, y, b) -> float:
-    target = y
-
-    if y < (x - b):
-        target = x - b
-    
-    if y > (x + b):
-        target = x + b
-
-
-    return target

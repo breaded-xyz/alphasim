@@ -95,7 +95,7 @@ def test_backtest_abs_fundingrates():
     prices = pd.DataFrame([100, 100, 100, 100, 100], columns=["Acme"])
     weights = pd.DataFrame([1, 1, 1, -1, -1], columns=["Acme"])
     rates = pd.DataFrame([-0.1, -0.1, -0.2, -0.2, -0.2], columns=["Acme"])
-    result = bt.backtest(prices, weights, rates, do_calc_funding_on_abs_position=True)
+    result = bt.backtest(prices, weights, rates, funding_on_abs_position=True)
 
     # Funding is paid on the positions from the previous period, 
     # so no impact when i == 0
@@ -125,7 +125,7 @@ def test_backtest_ignore_buffer_on_new():
         prices,
         weights,
         trade_buffer=0.25,
-        do_ignore_buffer_on_new=True,
+        ignore_buffer_on_new=True,
     )
 
     # Open a new position ignoring the trade buffer constraint
@@ -140,7 +140,7 @@ def test_backtest_liquidate_on_zero_weight():
         prices,
         weights,
         trade_buffer=0.25,
-        do_liquidate_on_zero_weight=True
+        ignore_buffer_on_zero=True
     )
 
     assert result.loc[(1, bt.CASH)]["end_portfolio"] == 1000

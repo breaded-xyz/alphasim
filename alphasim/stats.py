@@ -46,7 +46,7 @@ def backtest_stats(
     df["commission"] = summary["commission"].sum()
     df["funding_payment"] = summary["funding_payment"].sum()
     df["cost_profit_pct"] = (df["commission"] + df["funding_payment"]) / df["profit"]
-    df["trade_count"] = result["do_trade"].sum()
+    df["trade_count"] = result["is_trade"].sum()
     df["skew"] = ret.skew()
     df["kurtosis"] = ret.kurtosis()
 
