@@ -3,7 +3,7 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 
-from alphasim.allocation import allocate
+from alphasim.portfolio import allocate
 from alphasim.commission import zero_commission
 from alphasim.money import initial_capital
 from alphasim.util import like
