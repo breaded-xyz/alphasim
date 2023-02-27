@@ -5,7 +5,7 @@ from scipy.optimize import minimize
 
 def distribute(weights: pd.Series, max_weight: float) -> np.ndarray:
     """
-    Re-distribute weights constrained by a maximum individual weight.
+    Distribute weights constrained by a maximum individual weight.
     Given weights sould be positive numbers that sum to 1.
     Returned weights will sum to given weights.
     """
