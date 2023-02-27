@@ -1,26 +1,25 @@
 import numpy as np
 import pandas as pd
 
-from alphasim.portfolio import distribute, norm_signed
+from alphasim.portfolio import distribute, weight
 
 
 def test_distribute():
 
     forecast = pd.Series(
-        {"Acme": 100, "Foo": -20, "Bar": 30}
+        {"Acme": 100, "Foo": -20, "Bar": 19, "Coyote": 500}
     )
-    norm_wts = norm_signed(forecast)
+    norm_wts = weight(forecast)
     print(norm_wts)
 
-    # Sort weights to ensure redistribution is proportial to original weight
-    x = norm_wts.abs().sort_values(ascending=False)
+    x = norm_wts.abs()
     x[:] = distribute(x, max_weight=0.4)
 
-    # Apply the sign of the forecast back
+    # Reapply the sign of the forecast
     x = np.copysign(x, norm_wts)
     print(x)
                           
-    assert np.array_equal(x.round(3), [0.400, 0.333, -0.267])
+    assert np.array_equal(x.round(3), [0.284, -0.159, 0.157, 0.400])
 
 
 

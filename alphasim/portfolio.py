@@ -5,12 +5,15 @@ from scipy.optimize import minimize
 
 def distribute(weights: pd.Series, max_weight: float) -> np.ndarray:
     """
-    Distribute weights constrained by a maximum individual weight.
-    Given weights sould be positive numbers that sum to 1.
-    Returned weights will sum to given weights.
+    Distribute weights using a maximum individual weight constraint.
+    Input weights sould be positive real numbers that sum to 1.
+    Returned weights will sum to the given weights whilst obeying the
+    maximum weight constraint. Excess is distributed proportional to the
+    input weights.
     """
 
-    objective = lambda x: -np.sum(x)
+    def objective(x):
+        return np.sum(np.square(x - weights))
 
     constraints = [
         {"type": "ineq", "fun": lambda x: max_weight - np.amax(np.abs(x))},
@@ -24,7 +27,11 @@ def distribute(weights: pd.Series, max_weight: float) -> np.ndarray:
     return result.x
 
 
-def norm_signed(x: pd.Series) -> pd.Series:
+def weight(x: pd.Series) -> pd.Series:
+    """
+    Transform a continous signed forecast into
+    discrete weights with an absolute sum of 1.
+    """
     weights = x.abs()
     weights /= weights.sum()
     return np.copysign(weights, x)
