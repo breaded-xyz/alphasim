@@ -27,7 +27,7 @@ def distribute(weights: pd.Series, max_weight: float) -> np.ndarray:
     return result.x
 
 
-def weight(x: pd.Series) -> pd.Series:
+def to_weights(x: pd.Series) -> pd.Series:
     """
     Transform a continous signed forecast into
     discrete weights with an absolute sum of 1.
@@ -39,36 +39,31 @@ def weight(x: pd.Series) -> pd.Series:
 
 def allocate(
     capital: float,
-    port: pd.Series,
-    weight: pd.Series,
-    buffer: float = 0,
-    ignore_buffer_on_new: bool = False,
-    ignore_buffer_on_zero: bool = False,
+    price: pd.Series,
+    marked_portfolio: pd.Series,
+    target_weight: pd.Series,
+    trade_buffer: float = 0,
     quote: str = "USD",
 ) -> tuple:
 
-    start_weight = port / capital
+    start_weight = marked_portfolio / capital
 
-    adj_target_weight = weight.copy()
+    adj_target_weight = target_weight.copy()
     adj_target_weight[:] = [
-        _buffered_target(x, y, buffer) for x, y in zip(weight, start_weight)
+        _buffered_target(x, y, trade_buffer) for x, y in zip(target_weight, start_weight)
     ]
-
-    if ignore_buffer_on_new:
-        mask = weight.abs().gt(0) & start_weight.eq(0)
-        mask[quote] = False
-        adj_target_weight[mask] = weight
-
-    if ignore_buffer_on_zero:
-        mask = weight.eq(0) & start_weight.abs().gt(0)
-        mask[quote] = False
-        adj_target_weight[mask] = 0
 
     adj_delta_weight = adj_target_weight - start_weight
 
     trade_value = adj_delta_weight * capital
 
-    return start_weight, weight, adj_target_weight, adj_delta_weight, trade_value
+    trade_size = trade_value / price
+
+    return (
+        start_weight, target_weight,
+        adj_target_weight, adj_delta_weight, 
+        trade_size, trade_value
+    )
 
 
 def _buffered_target(x, y, b) -> float:

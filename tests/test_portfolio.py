@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from alphasim.portfolio import distribute, weight
+from alphasim.portfolio import distribute, to_weights
 
 
 def test_distribute():
@@ -9,7 +9,7 @@ def test_distribute():
     forecast = pd.Series(
         {"Acme": 100, "Foo": -20, "Bar": 19, "Coyote": 500}
     )
-    norm_wts = weight(forecast)
+    norm_wts = to_weights(forecast)
     print(norm_wts)
 
     x = norm_wts.abs()

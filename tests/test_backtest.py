@@ -75,7 +75,7 @@ def test_backtest_fundingrates():
     prices = pd.DataFrame([100, 100, 100, 100, 100], columns=["Acme"])
     weights = pd.DataFrame([1, 1, 1, -1, -1], columns=["Acme"])
     rates = pd.DataFrame([0.1, 0.1, -0.2, -0.2, -0.2], columns=["Acme"])
-    result = bt.backtest(prices, weights, rates)
+    result = bt.backtest(prices, weights, funding_rates=rates)
 
     # Funding is paid on the positions from the previous period, 
     # so no impact when i == 0
@@ -95,7 +95,7 @@ def test_backtest_abs_fundingrates():
     prices = pd.DataFrame([100, 100, 100, 100, 100], columns=["Acme"])
     weights = pd.DataFrame([1, 1, 1, -1, -1], columns=["Acme"])
     rates = pd.DataFrame([-0.1, -0.1, -0.2, -0.2, -0.2], columns=["Acme"])
-    result = bt.backtest(prices, weights, rates, funding_on_abs_position=True)
+    result = bt.backtest(prices, weights, funding_rates=rates, funding_on_abs_position=True)
 
     # Funding is paid on the positions from the previous period, 
     # so no impact when i == 0
@@ -116,31 +116,16 @@ def test_backtest_commission():
 
     assert result.loc[(0, bt.CASH)]["end_portfolio"] == 450
 
-
-def test_backtest_ignore_buffer_on_new():
-
-    prices = pd.DataFrame([100, 300, 300, 200, 200], columns=["Acme"])
-    weights = pd.DataFrame([0.1, 1.25, -1, -2, 0], columns=["Acme"])
-    result = bt.backtest(
-        prices,
-        weights,
-        trade_buffer=0.25,
-        ignore_buffer_on_new=True,
-    )
-
-    # Open a new position ignoring the trade buffer constraint
-    assert result.loc[(0, bt.CASH)]["end_portfolio"] == 900
-    assert result.loc[(0, "Acme")]["end_portfolio"] == 1
-
-def test_backtest_liquidate_on_zero_weight():
+def test_backtest_liquidate_mask():
 
     prices = pd.DataFrame([100, 100], columns=["Acme"])
     weights = pd.DataFrame([0.1, 0], columns=["Acme"])
+    mask = pd.DataFrame([True, False], columns=["Acme"])
     result = bt.backtest(
         prices,
         weights,
+        portfolio_mask=mask,
         trade_buffer=0.25,
-        ignore_buffer_on_zero=True
     )
 
     assert result.loc[(1, bt.CASH)]["end_portfolio"] == 1000

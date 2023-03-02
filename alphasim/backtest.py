@@ -32,13 +32,11 @@ RESULT_KEYS = [
 def backtest(
     prices: pd.DataFrame,
     weights: pd.DataFrame,
+    portfolio_mask: pd.DataFrame = None,
     funding_rates: pd.DataFrame = None,
     funding_on_abs_position: bool = False,
     trade_buffer: float = 0,
-    ignore_buffer_on_new: bool = False,
-    ignore_buffer_on_zero: bool = False,
     commission_func: Callable[[float, float], float] = zero_commission,
-    fixed_slippage: float = 0,
     initial_capital: float = 1000,
     money_func: Callable[[float, float], float] = initial_capital,
 ) -> pd.DataFrame | bool:
@@ -53,6 +51,14 @@ def backtest(
     if prices.shape != weights.shape:
         raise ValueError("shape of prices must match weights")
 
+    # Create default portfolio mask if none given
+    if portfolio_mask is None:
+        portfolio_mask = like(weights)
+        portfolio_mask[:] = True
+
+    if portfolio_mask.shape != weights.shape:
+        raise ValueError("shape of portfolio_mask must match weights")
+
     # Create empty (zero) funding if none given
     if funding_rates is None:
         funding_rates = like(weights)
@@ -63,6 +69,7 @@ def backtest(
     # Add asset to track cash balance
     prices[CASH] = 1
     weights[CASH] = 0
+    portfolio_mask[CASH] = True
     funding_rates[CASH] = 0
 
     # Portfolio to record the units held of a ticker
@@ -87,8 +94,9 @@ def backtest(
         else:
             start_port = port.iloc[i - 1]
 
-        price = prices.iloc[i]
-        funding_rate = funding_rates.iloc[i]
+        start_port = start_port.fillna(0)
+        price = prices.iloc[i].fillna(0)
+        funding_rate = funding_rates.iloc[i].fillna(0)
 
         # Mark-to-market the portfolio
         equity = start_port * price
@@ -102,13 +110,13 @@ def backtest(
         capital = money_func(initial=initial_capital, total=total)
 
         # Allocate to the portfolio using the latest target weights
+        target_weight = weights.iloc[i]
         rebal = allocate(
             capital,
+            price,
             equity,
-            weights.iloc[i],
+            target_weight,
             trade_buffer,
-            ignore_buffer_on_new,
-            ignore_buffer_on_zero,
             CASH,
         )
         (
@@ -116,15 +124,14 @@ def backtest(
             target_weight,
             adj_target_weight,
             adj_delta_weight,
+            trade_size,
             trade_value,
         ) = rebal
 
-        # Calc trade size using a fixed slippage factor
-        slipped_price = like(price)
-        slipped_price[:] = [
-            _slippage_price(x, y, fixed_slippage) for x, y in zip(trade_value, price)
-        ]
-        trade_size = (trade_value / slipped_price).fillna(0)
+        # Liquidate assets flagged as outside portfolio in this period
+        port_mask = portfolio_mask.iloc[i]
+        trade_size[~port_mask] = start_port.mul(-1)
+        trade_value[~port_mask] = equity.mul(-1)
 
         # Calc funding payments
         funding_payment = like(equity)
@@ -137,7 +144,7 @@ def backtest(
         commission = like(trade_value)
         commission[:] = [commission_func(x, y) for x, y in zip(trade_size, trade_value)]
 
-        # Zero out any cash values
+        # Zero out cash values
         trade_value[CASH] = 0
         trade_size[CASH] = 0
         commission[CASH] = 0
@@ -177,16 +184,3 @@ def backtest(
         port.iloc[i] = end_port
 
     return result
-
-
-def _slippage_price(delta, price, slippage_pct):
-
-    slippage_price = price
-
-    if delta > 0:
-        slippage_price *= 1 + slippage_pct
-
-    if delta < 0:
-        slippage_price *= 1 - slippage_pct
-
-    return slippage_price
