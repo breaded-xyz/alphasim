@@ -125,6 +125,8 @@ def backtest(
             trade_value,
         ) = rebal
 
+        trade_size = trade_size.fillna(0)
+
         # Calc funding payments
         funding_payment = like(equity)
         if funding_on_abs_position:
