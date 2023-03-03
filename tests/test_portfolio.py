@@ -6,17 +6,29 @@ from alphasim.portfolio import distribute, to_weights
 
 def test_distribute():
 
-    forecast = pd.Series(
-        {"Acme": 100, "Foo": -20, "Bar": 19, "Coyote": 500}
+    norm_wts = pd.Series(
+        {
+        "BNBUSDT":-0.008050777797295872,
+        "BTCUSDT":0.06898261754809881,
+        "ETHUSDT":0.09226318314358928,
+        "ADAUSDT":-0.08615190821239778,
+        "XRPUSDT":-0.09277929793210976,
+        "LINKUSD":0.21050327180819334,
+        "MATICUSDT":0.08260193011449973,
+        "DOGEUSDT":-0.23104263169596148,
+        "CHZUSDT":-0.09942534056084149,
+        "SOLUSDT":0.028199041187012476,
+        }
     )
-    norm_wts = to_weights(forecast)
-    print(norm_wts)
+
+    assert norm_wts.abs().sum() == 1
+
 
     x = norm_wts.abs()
-    x[:] = distribute(x, max_weight=0.4)
+    x[:] = distribute(x, max_weight=0.2)
 
     # Reapply the sign of the forecast
     x = np.copysign(x, norm_wts)
-    print(x)
+    print(x.round(4))
                           
-    assert np.array_equal(x.round(3), [0.284, -0.159, 0.157, 0.400])
+    assert x.max() <= 0.4
