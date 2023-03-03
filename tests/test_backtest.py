@@ -1,6 +1,5 @@
 from functools import partial
 
-import numpy as np
 import pandas as pd
 
 import alphasim.backtest as bt
@@ -117,35 +116,6 @@ def test_backtest_commission():
 
     assert result.loc[(0, bt.CASH)]["end_portfolio"] == 450
 
-def test_backtest_ignore_buffer_on_new():
-
-    prices = pd.DataFrame([100, 300, 300, 200, 200], columns=["Acme"])
-    weights = pd.DataFrame([0.1, 1.25, -1, -2, 0], columns=["Acme"])
-    result = bt.backtest(
-        prices,
-        weights,
-        trade_buffer=0.25,
-        ignore_buffer_on_new=True,
-    )
-
-    # Open a new position ignoring the trade buffer constraint
-    assert result.loc[(0, bt.CASH)]["end_portfolio"] == 900
-    assert result.loc[(0, "Acme")]["end_portfolio"] == 1
-
-def test_backtest_liquidate_on_nan():
-
-    prices = pd.DataFrame([100, 100], columns=["Acme"])
-    weights = pd.DataFrame([0.1, None], columns=["Acme"])
-    result = bt.backtest(
-        prices,
-        weights,
-        trade_buffer=0.05,
-        liquidate_on_nan=True
-    )
-
-    assert result.loc[(1, bt.CASH)]["end_portfolio"] == 1000
-    assert result.loc[(1, "Acme")]["end_portfolio"] == 0
-
 def test_backtest_leverage_long():
     prices = pd.DataFrame([10, 10, 30], columns=["Acme"])
     weights = pd.DataFrame([1, 2, 0], columns=["Acme"])
@@ -176,33 +146,3 @@ def test_backtest_leverage_short():
     # Increase leverage to 2x based on a portfolio NAV of 1000
     assert result.loc[(1, bt.CASH)]["end_portfolio"] == 3000
     assert result.loc[(1, "Acme")]["end_portfolio"] == -200
-
-def test_rotate_portfolio():
-    prices = pd.DataFrame(
-        {
-            "Acme": [100, 100, 100],
-            "Foo": [0, 100, 100]
-         }
-    )
-
-    weights = pd.DataFrame(
-        {
-            "Acme": [0.1, None, 0.2],
-            "Foo": [None, 0.1, 0.2]
-         }
-    )
-
-
-    result = bt.backtest(prices, weights, liquidate_on_nan=True)
-
-    assert result.loc[(0, bt.CASH)]["end_portfolio"] == 900
-    assert result.loc[(0, "Acme")]["end_portfolio"] == 1
-    assert result.loc[(0, "Foo")]["end_portfolio"] == 0
-
-    assert result.loc[(1, bt.CASH)]["end_portfolio"] == 900
-    assert result.loc[(1, "Acme")]["end_portfolio"] == 0
-    assert result.loc[(1, "Foo")]["end_portfolio"] == 1
-
-    assert result.loc[(2, bt.CASH)]["end_portfolio"] == 600
-    assert result.loc[(2, "Acme")]["end_portfolio"] == 2
-    assert result.loc[(2, "Foo")]["end_portfolio"] == 2

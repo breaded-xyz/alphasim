@@ -37,11 +37,10 @@ def backtest(
     trade_buffer: float = 0,
     commission_func: Callable[[float, float], float] = zero_commission,
     initial_capital: float = 1000,
-    money_func: Callable[[float, float], float] = initial_capital,
-    ignore_buffer_on_new: bool = False,
-    liquidate_on_nan: bool = False
+    money_func: Callable[[float, float], float] = initial_capital
 ) -> pd.DataFrame | bool:
 
+    # Validate args
     if len(prices) == 0:
         raise ValueError("prices length must be greater than 0")
     
@@ -50,8 +49,10 @@ def backtest(
 
     if len(weights) == 0:
         raise ValueError("weights length must be greater than 0")
+    
+    if weights.isna().sum().sum() != 0:
+        raise ValueError("weights must not have any NaNs")
 
-    # Ensure prices and weights have the same dimensions
     if prices.shape != weights.shape:
         raise ValueError("shape of prices must match weights")
 
@@ -114,8 +115,6 @@ def backtest(
             equity,
             target_weight,
             trade_buffer,
-            ignore_buffer_on_new,
-            liquidate_on_nan,
         )
         (
             start_weight,

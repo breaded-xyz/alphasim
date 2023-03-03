@@ -8,11 +8,10 @@ import alphasim.stats as stats
 import alphasim.money as mn
 import alphasim.commission as cm
 
-
 def test_backtest_crypto():
-    prices = _load_test_data("crypto_prices.csv")
-    weights = _load_test_data("crypto_weights.csv")
-    funding = _load_test_data("crypto_funding.csv")
+    prices = _load_test_data("crypto_prices.csv").fillna(0)
+    weights = _load_test_data("crypto_weights.csv").fillna(0)
+    funding = _load_test_data("crypto_funding.csv").fillna(0)
     tb = 0.05
 
     result = bt.backtest(
@@ -22,8 +21,6 @@ def test_backtest_crypto():
         money_func=mn.total_equity,
         commission_func=partial(cm.linear_pct_commission, pct_commission=0.001),
         funding_on_abs_position=True,
-        liquidate_on_nan=True,
-        ignore_buffer_on_new=True,
     )
     assert result is not None
 
@@ -35,8 +32,6 @@ def test_backtest_crypto():
         freq_unit="H",
         trading_days_year=365,
     )
-
-    #assert result.loc[:, "start_portfolio"].isna().sum().sum() == 0
 
     print(result_stats)
 

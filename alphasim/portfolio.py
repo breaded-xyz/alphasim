@@ -30,7 +30,7 @@ def distribute(weights: pd.Series, max_weight: float) -> np.ndarray:
 def to_weights(x: pd.Series) -> pd.Series:
     """
     Transform a continous signed forecast into
-    discrete weights with an absolute sum of 1.
+    weights with an absolute sum of 1.
     """
     weights = x.abs()
     weights /= weights.sum()
@@ -43,8 +43,6 @@ def allocate(
     marked_portfolio: pd.Series,
     target_weight: pd.Series,
     trade_buffer: float = 0,
-    ignore_buffer_on_new: bool = False,
-    liquidate_on_nan: bool = False,
 ) -> tuple:
 
     start_weight = marked_portfolio / capital
@@ -55,19 +53,11 @@ def allocate(
         for x, y in zip(target_weight, start_weight)
     ]
 
-    if ignore_buffer_on_new:
-        mask = target_weight.abs().le(trade_buffer) & start_weight.eq(0)
-        adj_target_weight[mask] = target_weight
-
-    if liquidate_on_nan:
-        mask = target_weight.isna() & start_weight.abs().gt(0)
-        adj_target_weight[mask] = 0
-
     adj_delta_weight = adj_target_weight - start_weight
 
     trade_value = adj_delta_weight * capital
 
-    trade_size = (trade_value / price).fillna(0)
+    trade_size = trade_value / price
 
     return (
         start_weight, target_weight,
