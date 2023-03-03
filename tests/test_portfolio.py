@@ -20,6 +20,3 @@ def test_distribute():
     print(x)
                           
     assert np.array_equal(x.round(3), [0.284, -0.159, 0.157, 0.400])
-
-
-

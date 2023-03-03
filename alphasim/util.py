@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-def like(source):
+def like(source, fill_value=0):
 
     match type(source):
         case pd.DataFrame:
@@ -13,6 +13,8 @@ def like(source):
             copied.index = source.index
         case _:
             copied = np.zeros(source.shape, dtype=np.float64)
+
+    copied[:] = fill_value
 
     return copied
 

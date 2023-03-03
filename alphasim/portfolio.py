@@ -43,7 +43,8 @@ def allocate(
     marked_portfolio: pd.Series,
     target_weight: pd.Series,
     trade_buffer: float = 0,
-    quote: str = "USD",
+    ignore_buffer_on_new: bool = False,
+    liquidate_on_nan: bool = False,
 ) -> tuple:
 
     start_weight = marked_portfolio / capital
@@ -52,6 +53,14 @@ def allocate(
     adj_target_weight[:] = [
         _buffered_target(x, y, trade_buffer) for x, y in zip(target_weight, start_weight)
     ]
+
+    if ignore_buffer_on_new:
+        mask = target_weight.abs().le(trade_buffer) & start_weight.eq(0)
+        adj_target_weight[mask] = target_weight
+
+    if liquidate_on_nan:
+        mask = target_weight.isna() & start_weight.abs().gt(0)
+        adj_target_weight[mask] = 0
 
     adj_delta_weight = adj_target_weight - start_weight
 

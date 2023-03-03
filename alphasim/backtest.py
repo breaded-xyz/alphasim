@@ -32,13 +32,14 @@ RESULT_KEYS = [
 def backtest(
     prices: pd.DataFrame,
     weights: pd.DataFrame,
-    portfolio_mask: pd.DataFrame = None,
     funding_rates: pd.DataFrame = None,
     funding_on_abs_position: bool = False,
     trade_buffer: float = 0,
     commission_func: Callable[[float, float], float] = zero_commission,
     initial_capital: float = 1000,
     money_func: Callable[[float, float], float] = initial_capital,
+    ignore_buffer_on_new: bool = False,
+    liquidate_on_nan: bool = False
 ) -> pd.DataFrame | bool:
 
     if len(prices) == 0:
@@ -51,14 +52,6 @@ def backtest(
     if prices.shape != weights.shape:
         raise ValueError("shape of prices must match weights")
 
-    # Create default portfolio mask if none given
-    if portfolio_mask is None:
-        portfolio_mask = like(weights)
-        portfolio_mask[:] = True
-
-    if portfolio_mask.shape != weights.shape:
-        raise ValueError("shape of portfolio_mask must match weights")
-
     # Create empty (zero) funding if none given
     if funding_rates is None:
         funding_rates = like(weights)
@@ -69,7 +62,6 @@ def backtest(
     # Add asset to track cash balance
     prices[CASH] = 1
     weights[CASH] = 0
-    portfolio_mask[CASH] = True
     funding_rates[CASH] = 0
 
     # Portfolio to record the units held of a ticker
@@ -94,9 +86,8 @@ def backtest(
         else:
             start_port = port.iloc[i - 1]
 
-        start_port = start_port.fillna(0)
-        price = prices.iloc[i].fillna(0)
-        funding_rate = funding_rates.iloc[i].fillna(0)
+        price = prices.iloc[i]
+        funding_rate = funding_rates.iloc[i]
 
         # Mark-to-market the portfolio
         equity = start_port * price
@@ -117,7 +108,8 @@ def backtest(
             equity,
             target_weight,
             trade_buffer,
-            CASH,
+            ignore_buffer_on_new,
+            liquidate_on_nan,
         )
         (
             start_weight,
@@ -127,11 +119,6 @@ def backtest(
             trade_size,
             trade_value,
         ) = rebal
-
-        # Liquidate assets flagged as outside portfolio in this period
-        port_mask = portfolio_mask.iloc[i]
-        trade_size[~port_mask] = start_port.mul(-1)
-        trade_value[~port_mask] = equity.mul(-1)
 
         # Calc funding payments
         funding_payment = like(equity)
