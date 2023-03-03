@@ -44,6 +44,9 @@ def backtest(
 
     if len(prices) == 0:
         raise ValueError("prices length must be greater than 0")
+    
+    if prices.isna().sum().sum() != 0:
+        raise ValueError("prices must not have any NaNs")
 
     if len(weights) == 0:
         raise ValueError("weights length must be greater than 0")
@@ -55,6 +58,9 @@ def backtest(
     # Create empty (zero) funding if none given
     if funding_rates is None:
         funding_rates = like(weights)
+    
+    if funding_rates.isna().sum().sum() != 0:
+        raise ValueError("funding must not have any NaNs")
 
     if funding_rates.shape != weights.shape:
         raise ValueError("shape of funding_rates must match weights")

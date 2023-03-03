@@ -51,7 +51,8 @@ def allocate(
 
     adj_target_weight = target_weight.copy()
     adj_target_weight[:] = [
-        _buffered_target(x, y, trade_buffer) for x, y in zip(target_weight, start_weight)
+        _buffered_target(x, y, trade_buffer) 
+        for x, y in zip(target_weight, start_weight)
     ]
 
     if ignore_buffer_on_new:
@@ -66,7 +67,7 @@ def allocate(
 
     trade_value = adj_delta_weight * capital
 
-    trade_size = trade_value / price
+    trade_size = (trade_value / price).fillna(0)
 
     return (
         start_weight, target_weight,
