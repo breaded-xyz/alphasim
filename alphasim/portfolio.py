@@ -16,7 +16,7 @@ def distribute(weights: pd.Series, max_weight: float) -> np.ndarray:
         return np.sum(np.square(x - weights))
 
     constraints = [
-        {"type": "ineq", "fun": lambda x: max_weight - np.amax(np.abs(x))},
+        {"type": "eq", "fun": lambda x: np.amax(x) - max_weight},
         {"type": "eq", "fun": lambda x: np.sum(x) - np.sum(weights)},
     ]
 
