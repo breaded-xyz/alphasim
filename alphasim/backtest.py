@@ -127,6 +127,14 @@ def backtest(
 
         trade_size = trade_size.fillna(0)
 
+        # Support rotating portfolios by ignoring the buffer
+        # and forcing liquidations on a zero target weight
+        liquidate = start_port.abs().gt(0) & target_weight.eq(0)
+        adj_target_weight[liquidate] = 0
+        adj_delta_weight[liquidate] = target_weight - start_weight
+        trade_size[liquidate] = start_port.mul(-1)
+        trade_value[liquidate] = trade_size * price
+
         # Calc funding payments
         funding_payment = like(equity)
         if funding_on_abs_position:

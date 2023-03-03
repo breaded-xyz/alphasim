@@ -66,8 +66,8 @@ def test_backtest_tradetobuffer():
     # Continue short
     assert result.loc[(3, "Acme")]["adj_delta_weight"] == -1.25
 
-    # Position reverses
-    assert result.loc[(4, "Acme")]["adj_delta_weight"] == 1.5
+    # Position reverses and zero weight do liquidate in full
+    assert result.loc[(4, "Acme")]["adj_delta_weight"] == 1.75
 
 
 def test_backtest_fundingrates():
