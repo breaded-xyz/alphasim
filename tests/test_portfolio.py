@@ -31,4 +31,4 @@ def test_distribute():
     x = np.copysign(x, norm_wts)
     print(x.round(4))
                           
-    assert x.max() <= 0.4
+    assert x.max() <= 0.2
