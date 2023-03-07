@@ -125,6 +125,8 @@ def backtest(
             trade_value,
         ) = rebal
 
+        # Trade size could be NaN if price was NaN
+        # Ensure consistency by zeroing NaNs
         trade_size = trade_size.fillna(0)
 
         # Support rotating portfolios by ignoring the buffer
