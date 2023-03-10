@@ -194,7 +194,7 @@ def backtest(
                 end_port,
             ]
         )
-        result.loc[weights.index[i], :] = period_result.T
+        result.loc[weights.index[i]] = period_result.T
 
         port.iloc[i] = end_port
 

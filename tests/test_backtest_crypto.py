@@ -1,4 +1,5 @@
 import os
+import time
 from functools import partial
 
 import pandas as pd
@@ -15,6 +16,7 @@ def test_backtest_crypto():
     funding = _load_test_data("crypto_funding.csv").fillna(0)
     tb = 0.05
 
+    t0 = time.perf_counter()
     result = bt.backtest(
         prices,
         weights,
@@ -24,7 +26,11 @@ def test_backtest_crypto():
         commission_func=partial(cm.linear_pct_commission, pct_commission=0.001),
         funding_on_abs_position=True,
     )
+    t1 = time.perf_counter()
+
     assert result is not None
+
+    print(t1 - t0)
 
     benchmark_prices = prices[["BTCUSDT"]]
     result_stats = stats.backtest_stats(
