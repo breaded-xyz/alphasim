@@ -1,13 +1,12 @@
-from typing import Callable
+from typing import Callable, cast
 
 import numpy as np
 import pandas as pd
 
-from alphasim.portfolio import allocate
 from alphasim.commission import zero_commission
 from alphasim.money import initial_capital
+from alphasim.portfolio import allocate
 from alphasim.util import like
-
 
 CASH = "cash"
 EQUITY = "equity"
@@ -22,7 +21,7 @@ RESULT_KEYS = [
     "adj_delta_weight",
     "is_trade",
     "trade_value",
-    "trade_size",
+    "trade_quantity",
     "funding_payment",
     "commission",
     "end_portfolio",
@@ -32,24 +31,25 @@ RESULT_KEYS = [
 def backtest(
     prices: pd.DataFrame,
     weights: pd.DataFrame,
-    funding_rates: pd.DataFrame = None,
+    funding_rates: pd.DataFrame | None = None,
     funding_on_abs_position: bool = False,
     trade_buffer: float = 0,
     commission_func: Callable[[float, float], float] = zero_commission,
     initial_capital: float = 1000,
-    money_func: Callable[[float, float], float] = initial_capital
-) -> pd.DataFrame | bool:
+    money_func: Callable[[float, float], float] = initial_capital,
+    discrete_shares: bool = False,
+) -> pd.DataFrame:
 
     # Validate args
     if len(prices) == 0:
         raise ValueError("prices length must be greater than 0")
-    
+
     if prices.isna().sum().sum() != 0:
         raise ValueError("prices must not have any NaNs")
 
     if len(weights) == 0:
         raise ValueError("weights length must be greater than 0")
-    
+
     if weights.isna().sum().sum() != 0:
         raise ValueError("weights must not have any NaNs")
 
@@ -58,8 +58,8 @@ def backtest(
 
     # Create empty (zero) funding if none given
     if funding_rates is None:
-        funding_rates = like(weights)
-    
+        funding_rates = cast(pd.DataFrame, like(weights))
+
     if funding_rates.isna().sum().sum() != 0:
         raise ValueError("funding must not have any NaNs")
 
@@ -71,8 +71,16 @@ def backtest(
     weights[CASH] = 0
     funding_rates[CASH] = 0
 
+    # By default we allow partial shares to be
+    # transacted in lots of size 1 in the quote currency.
+    # Or we set lot_sizes to None which will enforce
+    # that only whole shares can be transacted.
+    lot_sizes = cast(pd.Series, like(prices.iloc[0], 1))
+    if discrete_shares:
+        lot_sizes = None
+
     # Portfolio to record the units held of a ticker
-    port = like(weights)
+    port = cast(pd.DataFrame, like(weights))
     port.iloc[0][CASH] = initial_capital
 
     # Final collated result
@@ -105,7 +113,7 @@ def backtest(
             break
 
         # Set the investable capital used during allocation
-        capital = money_func(initial=initial_capital, total=total)
+        capital = money_func(initial_capital, total)
 
         # Allocate to the portfolio using the latest target weights
         target_weight = weights.iloc[i]
@@ -115,27 +123,28 @@ def backtest(
             equity,
             target_weight,
             trade_buffer,
+            lot_sizes,
         )
         (
             start_weight,
             target_weight,
             adj_target_weight,
             adj_delta_weight,
-            trade_size,
+            trade_quantity,
             trade_value,
         ) = rebal
 
-        # Trade size could be NaN if price was NaN
-        # Ensure consistency by zeroing NaNs
-        trade_size = trade_size.fillna(0)
+        # Trade qty could be NaN if price was NaN
+        # Ensure consistency by filling with zero
+        trade_quantity = trade_quantity.fillna(0)
 
         # Support rotating portfolios by ignoring the buffer
         # and forcing liquidations on a zero target weight
         liquidate = start_port.abs().gt(0) & target_weight.eq(0)
         adj_target_weight[liquidate] = 0
         adj_delta_weight[liquidate] = target_weight - start_weight
-        trade_size[liquidate] = start_port.mul(-1)
-        trade_value[liquidate] = trade_size * price
+        trade_quantity[liquidate] = start_port.mul(-1)
+        trade_value[liquidate] = trade_quantity * price
 
         # Calc funding payments
         funding_payment = like(equity)
@@ -146,23 +155,25 @@ def backtest(
 
         # Calc commission for the traded tickers using the given commission func
         commission = like(trade_value)
-        commission[:] = [commission_func(x, y) for x, y in zip(trade_size, trade_value)]
+        commission[:] = [
+            commission_func(x, y) for x, y in zip(trade_quantity, trade_value)
+        ]
 
         # Zero out cash values
         trade_value[CASH] = 0
-        trade_size[CASH] = 0
+        trade_quantity[CASH] = 0
         commission[CASH] = 0
         funding_payment[CASH] = 0
 
         # Update portfolio and cash positions
         end_port = start_port.copy()
-        end_port += trade_size
+        end_port += trade_quantity
         end_port[CASH] += (
             trade_value.mul(-1).sum() + commission.sum() + funding_payment.sum()
         )
 
         # Create mask to indicate if the asset is traded to aid later analysis
-        is_trade = trade_size.abs().gt(0)
+        is_trade = trade_quantity.abs().gt(0)
 
         # Append data for this time period to the result
         period_result = np.array(
@@ -177,13 +188,13 @@ def backtest(
                 adj_delta_weight,
                 is_trade,
                 trade_value,
-                trade_size,
+                trade_quantity,
                 funding_payment,
                 commission,
                 end_port,
             ]
         )
-        result.loc[weights.index[i]] = period_result.T
+        result.loc[weights.index[i], :] = period_result.T
 
         port.iloc[i] = end_port
 

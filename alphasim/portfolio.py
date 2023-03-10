@@ -1,3 +1,5 @@
+from typing import cast
+
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
@@ -34,7 +36,7 @@ def to_weights(x: pd.Series) -> pd.Series:
     """
     weights = x.abs()
     weights /= weights.sum()
-    return np.copysign(weights, x)
+    return cast(pd.Series, np.copysign(weights, x))
 
 
 def allocate(
@@ -43,36 +45,54 @@ def allocate(
     marked_portfolio: pd.Series,
     target_weight: pd.Series,
     trade_buffer: float = 0,
-) -> tuple:
+    lot_size: pd.Series | None = None,
+) -> tuple[pd.Series, ...]:
 
     start_weight = marked_portfolio / capital
 
     adj_target_weight = target_weight.copy()
     adj_target_weight[:] = [
-        _buffered_target(x, y, trade_buffer) 
-        for x, y in zip(target_weight, start_weight)
+        _buffer_target(x, y, trade_buffer) for x, y in zip(target_weight, start_weight)
     ]
 
     adj_delta_weight = adj_target_weight - start_weight
 
-    trade_value = adj_delta_weight * capital
+    if lot_size is None:
+        lot_size = price.copy()
 
-    trade_size = trade_value / price
+    lots = _discretize(capital, adj_delta_weight, lot_size)
+
+    trade_value = lots * lot_size
+    trade_quantity = trade_value / price
 
     return (
-        start_weight, target_weight,
-        adj_target_weight, adj_delta_weight, 
-        trade_size, trade_value
+        start_weight,
+        target_weight,
+        adj_target_weight,
+        adj_delta_weight,
+        trade_quantity,
+        trade_value,
     )
 
 
-def _buffered_target(x, y, b) -> float:
-    target = y
+def _buffer_target(target: float, current: float, buffer: float) -> float:
+    buffered = current
 
-    if y < (x - b):
-        target = x - b
+    if current < (target - buffer):
+        buffered = target - buffer
 
-    if y > (x + b):
-        target = x + b
+    if current > (target + buffer):
+        buffered = target + buffer
 
-    return target
+    return buffered
+
+
+def _discretize(capital: float, weights: pd.Series, lot_sizes: pd.Series) -> pd.Series:
+
+    budget = (weights * capital).round()
+
+    rem = budget % lot_sizes
+
+    lots = (budget - rem) / lot_sizes
+
+    return lots

@@ -1,13 +1,13 @@
 import numpy as np
 import pandas as pd
 
-import alphasim.const as const
 import alphasim.backtest as bt
+import alphasim.const as const
 
 
 def backtest_stats(
     result: pd.DataFrame,
-    benchmark: pd.DataFrame = None,
+    benchmark: pd.DataFrame | None = None,
     freq: int = 1,
     freq_unit: str = "D",
     trading_days_year: int = const.TRADING_DAYS_YEAR,
@@ -59,15 +59,18 @@ def backtest_stats(
 
     # Turnover
     ann_mean_equity = summary[bt.EQUITY].mean().squeeze() * cal_years
-    buy_value = result["trade_value"].loc[result["trade_size"] > 0].abs().sum()
-    sell_value = result["trade_value"].loc[result["trade_size"] < 0].abs().sum()
+    buy_value = result["trade_value"].loc[result["trade_quantity"] > 0].abs().sum()
+    sell_value = result["trade_value"].loc[result["trade_quantity"] < 0].abs().sum()
     tx_value = np.min([buy_value, sell_value])
     df["ann_turnover"] = tx_value / ann_mean_equity
 
     if benchmark is not None:
         benchmark_stats = _asset_stats(
-            benchmark, initial=initial, 
-            freq=freq, freq_unit=freq_unit, trading_days_year=trading_days_year
+            benchmark,
+            initial=initial,
+            freq=freq,
+            freq_unit=freq_unit,
+            trading_days_year=trading_days_year,
         )
         df = pd.concat(
             [benchmark_stats, df], join="outer", keys=["benchmark", "backtest"]
@@ -86,8 +89,11 @@ def backtest_log_returns(result: pd.DataFrame) -> pd.DataFrame:
 
 
 def _asset_stats(
-    prices: pd.DataFrame, initial: float = 1000, freq: int = 1, freq_unit: str = "D",
-    trading_days_year: int = const.TRADING_DAYS_YEAR
+    prices: pd.DataFrame,
+    initial: float = 1000,
+    freq: int = 1,
+    freq_unit: str = "D",
+    trading_days_year: int = const.TRADING_DAYS_YEAR,
 ) -> pd.DataFrame:
 
     start = prices.index[0]

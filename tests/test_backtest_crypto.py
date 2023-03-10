@@ -1,12 +1,13 @@
+import os
 from functools import partial
 
 import pandas as pd
-import os
 
 import alphasim.backtest as bt
-import alphasim.stats as stats
-import alphasim.money as mn
 import alphasim.commission as cm
+import alphasim.money as mn
+import alphasim.stats as stats
+
 
 def test_backtest_crypto():
     prices = _load_test_data("crypto_prices.csv").fillna(0)
@@ -15,9 +16,10 @@ def test_backtest_crypto():
     tb = 0.05
 
     result = bt.backtest(
-        prices, weights,
-        funding_rates=funding, 
-        trade_buffer=tb, 
+        prices,
+        weights,
+        funding_rates=funding,
+        trade_buffer=tb,
         money_func=mn.total_equity,
         commission_func=partial(cm.linear_pct_commission, pct_commission=0.001),
         funding_on_abs_position=True,

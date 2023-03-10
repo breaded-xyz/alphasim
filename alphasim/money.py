@@ -1,6 +1,6 @@
-def initial_capital(initial, total: float) -> float:
+def initial_capital(initial: float, total: float) -> float:
     return initial
 
 
-def total_equity(initial, total: float) -> float:
+def total_equity(initial: float, total: float) -> float:
     return total
