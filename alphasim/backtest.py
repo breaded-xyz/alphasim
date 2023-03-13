@@ -20,8 +20,8 @@ RESULT_KEYS = [
     "adj_target_weight",
     "adj_delta_weight",
     "is_trade",
-    "trade_value",
-    "trade_quantity",
+    "quote_qty",
+    "base_qty",
     "funding_payment",
     "commission",
     "end_portfolio",
@@ -130,21 +130,21 @@ def backtest(
             target_weight,
             adj_target_weight,
             adj_delta_weight,
-            trade_quantity,
-            trade_value,
+            base_qty,
+            quote_qty,
         ) = rebal
 
-        # Trade qty could be NaN if price was NaN
+        # Base qty could be NaN if price was NaN
         # Ensure consistency by filling with zero
-        trade_quantity = trade_quantity.fillna(0)
+        base_qty = base_qty.fillna(0)
 
         # Support rotating portfolios by ignoring the buffer
         # and forcing liquidations on a zero target weight
         liquidate = start_port.abs().gt(0) & target_weight.eq(0)
         adj_target_weight[liquidate] = 0
         adj_delta_weight[liquidate] = target_weight - start_weight
-        trade_quantity[liquidate] = start_port.mul(-1)
-        trade_value[liquidate] = trade_quantity * price
+        base_qty[liquidate] = start_port.mul(-1)
+        quote_qty[liquidate] = base_qty * price
 
         # Calc funding payments
         funding_payment = like(equity)
@@ -154,26 +154,24 @@ def backtest(
             funding_payment = equity * funding_rate
 
         # Calc commission for the traded tickers using the given commission func
-        commission = like(trade_value)
-        commission[:] = [
-            commission_func(x, y) for x, y in zip(trade_quantity, trade_value)
-        ]
+        commission = like(quote_qty)
+        commission[:] = [commission_func(x, y) for x, y in zip(base_qty, quote_qty)]
 
         # Zero out cash values
-        trade_value[CASH] = 0
-        trade_quantity[CASH] = 0
+        quote_qty[CASH] = 0
+        base_qty[CASH] = 0
         commission[CASH] = 0
         funding_payment[CASH] = 0
 
         # Update portfolio and cash positions
         end_port = start_port.copy()
-        end_port += trade_quantity
+        end_port += base_qty
         end_port[CASH] += (
-            trade_value.mul(-1).sum() + commission.sum() + funding_payment.sum()
+            quote_qty.mul(-1).sum() + commission.sum() + funding_payment.sum()
         )
 
         # Create mask to indicate if the asset is traded to aid later analysis
-        is_trade = trade_quantity.abs().gt(0)
+        is_trade = base_qty.abs().gt(0)
 
         # Append data for this time period to the result
         period_result = np.array(
@@ -187,8 +185,8 @@ def backtest(
                 adj_target_weight,
                 adj_delta_weight,
                 is_trade,
-                trade_value,
-                trade_quantity,
+                quote_qty,
+                base_qty,
                 funding_payment,
                 commission,
                 end_port,

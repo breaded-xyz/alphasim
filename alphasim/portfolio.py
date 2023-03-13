@@ -47,6 +47,13 @@ def allocate(
     trade_buffer: float = 0,
     lot_size: pd.Series | None = None,
 ) -> tuple[pd.Series, ...]:
+    """
+    Allocate capital to a portfolio given a set of weights.
+    Serves to descretize continous weights into lots (shares).
+    Trade buffer is used to optimize allocation.
+    Lot size (in quote units) can be set to support assets which
+    allow partial buy/sell.
+    """
 
     start_weight = marked_portfolio / capital
 
@@ -62,16 +69,16 @@ def allocate(
 
     lots = _discretize(capital, adj_delta_weight, lot_size)
 
-    trade_value = lots * lot_size
-    trade_quantity = trade_value / price
+    quote_qty = lots * lot_size
+    base_qty = quote_qty / price
 
     return (
         start_weight,
         target_weight,
         adj_target_weight,
         adj_delta_weight,
-        trade_quantity,
-        trade_value,
+        base_qty,
+        quote_qty,
     )
 
 

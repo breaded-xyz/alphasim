@@ -59,8 +59,8 @@ def backtest_stats(
 
     # Turnover
     ann_mean_equity = summary[bt.EQUITY].mean().squeeze() * cal_years
-    buy_value = result["trade_value"].loc[result["trade_quantity"] > 0].abs().sum()
-    sell_value = result["trade_value"].loc[result["trade_quantity"] < 0].abs().sum()
+    buy_value = result["quote_qty"].loc[result["base_qty"] > 0].abs().sum()
+    sell_value = result["quote_qty"].loc[result["base_qty"] < 0].abs().sum()
     tx_value = np.min([buy_value, sell_value])
     df["ann_turnover"] = tx_value / ann_mean_equity
 
