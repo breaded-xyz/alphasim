@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from alphasim.portfolio import _discretize, allocate, distribute
+from alphasim.util import like
 
 
 def test_distribute():
@@ -42,14 +43,80 @@ def test_allocate():
     lots = pd.Series({"FOO": 10, "BAR": 10})
     port = pd.Series({"FOO": 200, "BAR": -200})
     weights = pd.Series({"FOO": 0.2, "BAR": -0.4})
+    tb = 0
 
-    rebal = allocate(capital, prices, port, weights, 0, lots)
-    (_, _, _, adj_delta_weight, trade_size, trade_value) = rebal
-    print(adj_delta_weight, trade_size, trade_value)
+    rebal = allocate(capital, prices, port, weights, tb, lots)
+    (_, _, _, adj_delta_weight, base_qty, quote_qty) = rebal
+    print(adj_delta_weight, base_qty, quote_qty)
 
     assert np.array_equal(adj_delta_weight.sort_index(), [-0.2, 0])
-    assert np.array_equal(trade_size.sort_index(), [-2, 0])
-    assert np.array_equal(trade_value.sort_index(), [-200, 0])
+    assert np.array_equal(base_qty.sort_index(), [-2, 0])
+    assert np.array_equal(quote_qty.sort_index(), [-200, 0])
+
+
+def test_allocate_shortratio():
+
+    # To reduce the relative capital allocated to short positions
+    # we can specifiy a param that expresses the ideal long/short ratio.
+    # Target weights will be adjusted according to the short ratio.
+
+    # Portfolio configured with half size short position
+    capital = 1000
+    prices = pd.Series({"FOO": 100, "BAR": 100})
+    port = pd.Series({"FOO": 200, "BAR": -100})
+
+    # Target weights are not 'short ratio' aware but
+    # will be adjusted during allocation according the short_f param
+    weights = pd.Series({"FOO": 0.2, "BAR": -0.4})
+
+    # 0.5 = half the capital allocated to shorts vs longs
+    short_f = 0.5
+
+    rebal = allocate(
+        capital,
+        prices,
+        port,
+        weights,
+        trade_buffer=0,
+        lot_size=like(port, 10),
+        short_f=short_f,
+    )
+    (_, _, _, adj_delta_weight, base_qty, quote_qty) = rebal
+    print(adj_delta_weight, base_qty, quote_qty)
+
+    # Start weight: BAR: -0.1 FOO: 0.2
+    # Short adj target weight: BAR: -0.2 FOO: 0.2
+    # Expect BAR short position rebalance to be increased by 1 share
+    assert np.array_equal(adj_delta_weight.sort_index(), [-0.1, 0])
+    assert np.array_equal(base_qty.sort_index(), [-1, 0])
+    assert np.array_equal(quote_qty.sort_index(), [-100, 0])
+
+
+def test_allocate_shortratio_initial():
+
+    capital = 1000
+    prices = pd.Series({"BAR": 100, "FOO": 100})
+    port = pd.Series({"BAR": 0, "FOO": 0})
+
+    weights = pd.Series({"BAR": -0.4, "FOO": 0.2})
+
+    short_f = 0.5
+
+    rebal = allocate(
+        capital,
+        prices,
+        port,
+        weights,
+        trade_buffer=0,
+        lot_size=like(port, 10),
+        short_f=short_f,
+    )
+    (_, _, _, adj_delta_weight, base_qty, quote_qty) = rebal
+    print(adj_delta_weight, base_qty, quote_qty)
+
+    assert np.array_equal(adj_delta_weight.sort_index(), [-0.2, 0.2])
+    assert np.array_equal(base_qty.sort_index(), [-2, 2])
+    assert np.array_equal(quote_qty.sort_index(), [-200, 200])
 
 
 def test_discretize():

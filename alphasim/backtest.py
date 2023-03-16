@@ -38,6 +38,7 @@ def backtest(
     initial_capital: float = 1000,
     money_func: Callable[[float, float], float] = initial_capital,
     discrete_shares: bool = False,
+    short_f: float = 1,
 ) -> pd.DataFrame:
 
     # Validate args
@@ -118,12 +119,7 @@ def backtest(
         # Allocate to the portfolio using the latest target weights
         target_weight = weights.iloc[i]
         rebal = allocate(
-            capital,
-            price,
-            equity,
-            target_weight,
-            trade_buffer,
-            lot_sizes,
+            capital, price, equity, target_weight, trade_buffer, lot_sizes, short_f
         )
         (
             start_weight,

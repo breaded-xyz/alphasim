@@ -46,6 +46,7 @@ def allocate(
     target_weight: pd.Series,
     trade_buffer: float = 0,
     lot_size: pd.Series | None = None,
+    short_f: float = 1,
 ) -> tuple[pd.Series, ...]:
     """
     Allocate capital to a portfolio given a set of weights.
@@ -53,13 +54,17 @@ def allocate(
     Trade buffer is used to optimize allocation.
     Lot size (in quote units) can be set to support assets which
     allow partial buy/sell.
+    Short factor can be given to down weight short positions
+    relative to long given the inherent margin requirements.
     """
 
     start_weight = marked_portfolio / capital
+    short_adj_target = target_weight.apply(lambda x: x * short_f if x < 0 else x)
 
-    adj_target_weight = target_weight.copy()
+    adj_target_weight = short_adj_target
     adj_target_weight[:] = [
-        _buffer_target(x, y, trade_buffer) for x, y in zip(target_weight, start_weight)
+        _buffer_target(x, y, trade_buffer)
+        for x, y in zip(short_adj_target, start_weight)
     ]
 
     adj_delta_weight = adj_target_weight - start_weight
