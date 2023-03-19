@@ -119,6 +119,32 @@ def test_allocate_shortratio_initial():
     assert np.array_equal(quote_qty.sort_index(), [-200, 200])
 
 
+def test_allocate_tradebuffer_and_shortf():
+    capital = 1000
+    prices = pd.Series({"BAR": 100, "FOO": 100})
+    port = pd.Series({"BAR": 0, "FOO": 0})
+    weights = pd.Series({"BAR": -0.4, "FOO": 0.2})
+
+    short_f = 0.5
+    trade_buffer = 0.05
+
+    rebal = allocate(
+        capital,
+        prices,
+        port,
+        weights,
+        trade_buffer=trade_buffer,
+        lot_size=like(port, 10),
+        short_f=short_f,
+    )
+    (_, _, _, adj_delta_weight, base_qty, quote_qty) = rebal
+    print(adj_delta_weight, base_qty, quote_qty)
+
+    assert np.array_equal(adj_delta_weight.round(3).sort_index(), [-0.175, 0.15])
+    assert np.array_equal(base_qty.sort_index(), [-1.8, 1.5])
+    assert np.array_equal(quote_qty.sort_index(), [-180, 150])
+
+
 def test_discretize():
 
     capital = 1000.003

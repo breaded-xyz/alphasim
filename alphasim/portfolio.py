@@ -59,16 +59,20 @@ def allocate(
     """
 
     start_weight = marked_portfolio / capital
-    short_adj_target = target_weight.apply(lambda x: x * short_f if x < 0 else x)
 
-    adj_target_weight = short_adj_target
+    # Adjust for trade buffer
+    adj_target_weight = target_weight.copy()
     adj_target_weight[:] = [
-        _buffer_target(x, y, trade_buffer)
-        for x, y in zip(short_adj_target, start_weight)
+        _buffer_target(x, y, trade_buffer) for x, y in zip(target_weight, start_weight)
     ]
 
+    # Adjust for short side factor
+    adj_target_weight = adj_target_weight.apply(lambda x: x * short_f if x < 0 else x)
+
+    # Delta dictates scale of rebalance
     adj_delta_weight = adj_target_weight - start_weight
 
+    # Descretize weights using given capital and lot size
     if lot_size is None:
         lot_size = price.copy()
 
@@ -102,9 +106,7 @@ def _buffer_target(target: float, current: float, buffer: float) -> float:
 def _discretize(capital: float, weights: pd.Series, lot_sizes: pd.Series) -> pd.Series:
 
     budget = (weights * capital).round()
-
     rem = budget % lot_sizes
-
     lots = (budget - rem) / lot_sizes
 
     return lots
