@@ -26,6 +26,7 @@ def test_backtest_crypto():
         commission_func=partial(cm.linear_pct_commission, pct_commission=0.001),
         funding_on_abs_position=True,
         short_f=0.5,
+        spread_f=0.01,
     )
     t1 = time.perf_counter()
 

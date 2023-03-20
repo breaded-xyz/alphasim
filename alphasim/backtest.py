@@ -39,6 +39,7 @@ def backtest(
     money_func: Callable[[float, float], float] = initial_capital,
     discrete_shares: bool = False,
     short_f: float = 1,
+    spread_f: float = 0,
 ) -> pd.DataFrame:
 
     # Validate args
@@ -116,10 +117,14 @@ def backtest(
         # Set the investable capital used during allocation
         capital = money_func(initial_capital, total)
 
-        # Allocate to the portfolio using the latest target weights
+        # Use target weight direction to apply spread factor to the price
         target_weight = weights.iloc[i]
+        quote = cast(pd.Series, like(price))
+        quote[:] = [quote_spread(x, y, spread_f) for x, y in zip(price, target_weight)]
+
+        # Allocate to the portfolio using the latest target weights and quote price
         rebal = allocate(
-            capital, price, equity, target_weight, trade_buffer, lot_sizes, short_f
+            capital, quote, equity, target_weight, trade_buffer, lot_sizes, short_f
         )
         (
             start_weight,
@@ -193,3 +198,17 @@ def backtest(
         port.iloc[i] = end_port
 
     return result
+
+
+def quote_spread(mid: float, target_weight: float, f: float) -> float:
+
+    quote = mid
+    spread = mid * f
+    half = spread / 2
+
+    if target_weight > 0:
+        quote += half
+    elif target_weight < 0:
+        quote -= half
+
+    return quote

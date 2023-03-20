@@ -3,8 +3,9 @@ from functools import partial
 import pandas as pd
 
 import alphasim.backtest as bt
-import alphasim.money as mn
 import alphasim.commission as cn
+import alphasim.money as mn
+
 
 def test_backtest_long():
     prices = pd.DataFrame([10, 15, 30], columns=["Acme"])
@@ -77,7 +78,7 @@ def test_backtest_fundingrates():
     rates = pd.DataFrame([0.1, 0.1, -0.2, -0.2, -0.2], columns=["Acme"])
     result = bt.backtest(prices, weights, funding_rates=rates)
 
-    # Funding is paid on the positions from the previous period, 
+    # Funding is paid on the positions from the previous period,
     # so no impact when i == 0
     assert result.loc[(0, "Acme")]["funding_payment"] == 0
 
@@ -90,14 +91,17 @@ def test_backtest_fundingrates():
     # Now short on negative funding so get paid
     assert result.loc[(4, "Acme")]["funding_payment"] == 200
 
+
 def test_backtest_abs_fundingrates():
 
     prices = pd.DataFrame([100, 100, 100, 100, 100], columns=["Acme"])
     weights = pd.DataFrame([1, 1, 1, -1, -1], columns=["Acme"])
     rates = pd.DataFrame([-0.1, -0.1, -0.2, -0.2, -0.2], columns=["Acme"])
-    result = bt.backtest(prices, weights, funding_rates=rates, funding_on_abs_position=True)
+    result = bt.backtest(
+        prices, weights, funding_rates=rates, funding_on_abs_position=True
+    )
 
-    # Funding is paid on the positions from the previous period, 
+    # Funding is paid on the positions from the previous period,
     # so no impact when i == 0
     assert result.loc[(0, "Acme")]["funding_payment"] == 0
 
@@ -105,6 +109,7 @@ def test_backtest_abs_fundingrates():
     assert result.loc[(1, "Acme")]["funding_payment"] == -100
     assert result.loc[(2, "Acme")]["funding_payment"] == -200
     assert result.loc[(4, "Acme")]["funding_payment"] == -200
+
 
 def test_backtest_commission():
 
@@ -115,6 +120,7 @@ def test_backtest_commission():
     result = bt.backtest(prices, weights, commission_func=cmn)
 
     assert result.loc[(0, bt.CASH)]["end_portfolio"] == 450
+
 
 def test_backtest_leverage_long():
     prices = pd.DataFrame([10, 10, 30], columns=["Acme"])
@@ -146,3 +152,20 @@ def test_backtest_leverage_short():
     # Increase leverage to 2x based on a portfolio NAV of 1000
     assert result.loc[(1, bt.CASH)]["end_portfolio"] == 3000
     assert result.loc[(1, "Acme")]["end_portfolio"] == -200
+
+
+def test_quote_spread():
+
+    mid = 10
+    tar = 0.4
+    f = 0.1
+    exp = 10.5
+    act = bt.quote_spread(mid, tar, f)
+    assert exp == act
+
+    mid = 10
+    tar = -0.4
+    f = 0.1
+    exp = 9.5
+    act = bt.quote_spread(mid, tar, f)
+    assert exp == act
