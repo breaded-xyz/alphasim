@@ -119,8 +119,11 @@ def backtest(
 
         # Use target weight direction to apply spread factor to the price
         target_weight = weights.iloc[i]
-        quote = cast(pd.Series, like(price))
-        quote[:] = [quote_spread(x, y, spread_f) for x, y in zip(price, target_weight)]
+        quote = price.copy()
+        if spread_f > 0:
+            quote[:] = [
+                quote_spread(x, y, spread_f) for x, y in zip(price, target_weight)
+            ]
 
         # Allocate to the portfolio using the latest target weights and quote price
         rebal = allocate(
