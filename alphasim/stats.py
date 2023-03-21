@@ -61,7 +61,7 @@ def backtest_stats(
     ann_mean_equity = summary[bt.EQUITY].mean().squeeze() * cal_years
     buy_value = result["quote_qty"].loc[result["base_qty"] > 0].abs().sum()
     sell_value = result["quote_qty"].loc[result["base_qty"] < 0].abs().sum()
-    tx_value = np.min([buy_value, sell_value])
+    tx_value = np.min([buy_value, sell_value]) / cal_years
     df["ann_turnover"] = tx_value / ann_mean_equity
 
     if benchmark is not None:
