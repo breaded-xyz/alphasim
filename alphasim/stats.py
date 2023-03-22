@@ -11,7 +11,10 @@ def backtest_stats(
     freq: int = 1,
     freq_unit: str = "D",
     trading_days_year: int = const.TRADING_DAYS_YEAR,
-) -> pd.DataFrame:
+) -> pd.DataFrame | None:
+
+    if result is None or len(result) == 0:
+        raise ValueError("result must not be None or empty")
 
     summary = result.groupby(level=0).sum()
     start = summary.index[0]
@@ -58,11 +61,12 @@ def backtest_stats(
     df["max_drawdown"] = dd.min()
 
     # Turnover
-    ann_mean_equity = summary[bt.EQUITY].mean().squeeze() * cal_years
+    mean_equity = summary[bt.EQUITY].mean()
     buy_value = result["quote_qty"].loc[result["base_qty"] > 0].abs().sum()
     sell_value = result["quote_qty"].loc[result["base_qty"] < 0].abs().sum()
-    tx_value = np.min([buy_value, sell_value]) / cal_years
-    df["ann_turnover"] = tx_value / ann_mean_equity
+    tx_value = np.min([buy_value, sell_value])
+    turnover = tx_value / mean_equity
+    df["ann_turnover"] = turnover / cal_years
 
     if benchmark is not None:
         benchmark_stats = _asset_stats(

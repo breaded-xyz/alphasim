@@ -24,3 +24,7 @@ def like(
     copied[:] = fill_value
 
     return copied
+
+
+def fillnan(x: pd.Series | pd.DataFrame, y: float) -> pd.Series | pd.DataFrame:
+    return x.replace([np.inf, -np.inf], np.nan).fillna(y)

@@ -6,7 +6,7 @@ import pandas as pd
 from alphasim.commission import zero_commission
 from alphasim.money import initial_capital
 from alphasim.portfolio import allocate
-from alphasim.util import like
+from alphasim.util import fillnan, like
 
 CASH = "cash"
 EQUITY = "equity"
@@ -138,9 +138,10 @@ def backtest(
             quote_qty,
         ) = rebal
 
-        # Base qty could be NaN if price was NaN
+        # Rebal values could be NaN if price was NaN
         # Ensure consistency by filling with zero
-        base_qty = base_qty.fillna(0)
+        base_qty = fillnan(base_qty, 0)
+        quote_qty = fillnan(quote_qty, 0)
 
         # Support rotating portfolios by ignoring the buffer
         # and forcing liquidations on a zero target weight
