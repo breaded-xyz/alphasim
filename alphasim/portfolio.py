@@ -54,8 +54,8 @@ def allocate(
     Trade buffer is used to optimize allocation.
     Lot size (in quote units) can be set to support assets which
     allow partial buy/sell.
-    Short factor can be given to down weight short positions
-    relative to long given the inherent margin requirements.
+    Short factor can be given to trim short side target weights
+    given the inherent margin requirements.
     """
 
     start_weight = marked_portfolio / capital
@@ -69,7 +69,7 @@ def allocate(
     # Adjust for short side factor
     adj_target_weight = adj_target_weight.apply(lambda x: x * short_f if x < 0 else x)
 
-    # Delta dictates scale of rebalance
+    # Delta dermines the amounts to rebalance
     adj_delta_weight = adj_target_weight - start_weight
 
     # Descretize weights using given capital and lot size
