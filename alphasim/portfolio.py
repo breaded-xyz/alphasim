@@ -109,9 +109,6 @@ def allocate(
 
 
 def _buffer_target(target: float, current: float, buffer: float) -> float:
-    if np.isnan(target):
-        return target
-
     buffered = current
 
     if current < (target - buffer):
