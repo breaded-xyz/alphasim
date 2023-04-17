@@ -1,12 +1,11 @@
 import numpy as np
 import pandas as pd
 
-from alphasim.portfolio import _discretize, allocate, distribute
+from alphasim.portfolio import _discretize, allocate, distribute_longshort
 from alphasim.util import like
 
 
 def test_distribute():
-
     norm_wts = pd.Series(
         {
             "BNBUSDT": -0.008050777797295872,
@@ -26,18 +25,14 @@ def test_distribute():
 
     assert norm_wts.abs().sum() == 1
 
-    x = norm_wts.abs().dropna()
-    x[:] = distribute(x, max_weight=0.2)
+    x = distribute_longshort(norm_wts, max=0.2)
 
-    # Reapply the sign of the forecast
-    x = np.copysign(x, norm_wts)
     print(x.round(4))
 
     assert x.max() <= 0.2
 
 
 def test_allocate():
-
     capital = 1000
     prices = pd.Series({"FOO": 100, "BAR": 100})
     lots = pd.Series({"FOO": 10, "BAR": 10})
@@ -55,7 +50,6 @@ def test_allocate():
 
 
 def test_allocate_shortratio():
-
     # To reduce the relative capital allocated to short positions
     # we can specifiy a param that expresses the ideal long/short ratio.
     # Target weights will be adjusted according to the short ratio.
@@ -93,7 +87,6 @@ def test_allocate_shortratio():
 
 
 def test_allocate_shortratio_initial():
-
     capital = 1000
     prices = pd.Series({"BAR": 100, "FOO": 100})
     port = pd.Series({"BAR": 0, "FOO": 0})
@@ -146,7 +139,6 @@ def test_allocate_tradebuffer_and_shortf():
 
 
 def test_discretize():
-
     capital = 1000.003
     lots = pd.Series({"FOO": 1, "BAR": 1})
     weights = pd.Series({"FOO": np.NaN, "BAR": 0.4})

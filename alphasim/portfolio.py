@@ -5,7 +5,7 @@ import pandas as pd
 from scipy.optimize import minimize
 
 
-def distribute(weights: pd.Series, max_weight: float) -> np.ndarray:
+def distribute(weights: pd.Series, max: float) -> np.ndarray:
     """
     Distribute weights using a maximum individual weight constraint.
     Input weights sould be positive real numbers that sum to 1.
@@ -18,7 +18,7 @@ def distribute(weights: pd.Series, max_weight: float) -> np.ndarray:
         return np.sum(np.square(x - weights))
 
     constraints = [
-        {"type": "eq", "fun": lambda x: np.amax(x) - max_weight},
+        {"type": "eq", "fun": lambda x: np.amax(x) - max},
         {"type": "eq", "fun": lambda x: np.sum(x) - np.sum(weights)},
     ]
 
@@ -27,6 +27,22 @@ def distribute(weights: pd.Series, max_weight: float) -> np.ndarray:
     result = minimize(objective, weights, bounds=bounds, constraints=constraints)
 
     return result.x
+
+
+def distribute_longshort(weights: pd.Series, max: float) -> pd.Series:
+    """
+    Distribute long and short (negative) weights.
+    Absolute sum of weights should equal 1.
+    """
+    abs_weights = weights.abs().dropna()
+
+    if len(abs_weights) == 0:
+        return weights
+
+    abs_weights[:] = distribute(abs_weights, max)
+    ls_weights = np.copysign(abs_weights, weights)
+
+    return pd.Series(ls_weights)
 
 
 def to_weights(x: pd.Series) -> pd.Series:
@@ -43,7 +59,7 @@ def allocate(
     capital: float,
     price: pd.Series,
     marked_portfolio: pd.Series,
-    target_weight: pd.Series,
+    target_weights: pd.Series,
     trade_buffer: float = 0,
     lot_size: pd.Series | None = None,
     short_f: float = 1,
@@ -58,19 +74,20 @@ def allocate(
     given the inherent margin requirements.
     """
 
-    start_weight = marked_portfolio / capital
+    start_weights = marked_portfolio / capital
 
     # Adjust for trade buffer
-    adj_target_weight = target_weight.copy()
+    adj_target_weight = target_weights.copy()
     adj_target_weight[:] = [
-        _buffer_target(x, y, trade_buffer) for x, y in zip(target_weight, start_weight)
+        _buffer_target(x, y, trade_buffer)
+        for x, y in zip(target_weights, start_weights)
     ]
 
     # Adjust for short side factor
     adj_target_weight = adj_target_weight.apply(lambda x: x * short_f if x < 0 else x)
 
-    # Delta dermines the amounts to rebalance
-    adj_delta_weight = adj_target_weight - start_weight
+    # Delta determines the amounts to rebalance
+    adj_delta_weight = adj_target_weight - start_weights
 
     # Descretize weights using given capital and lot size
     if lot_size is None:
@@ -82,8 +99,8 @@ def allocate(
     base_qty = quote_qty / price
 
     return (
-        start_weight,
-        target_weight,
+        start_weights,
+        target_weights,
         adj_target_weight,
         adj_delta_weight,
         base_qty,
@@ -104,7 +121,6 @@ def _buffer_target(target: float, current: float, buffer: float) -> float:
 
 
 def _discretize(capital: float, weights: pd.Series, lot_sizes: pd.Series) -> pd.Series:
-
     budget = (weights * capital).round()
     rem = budget % lot_sizes
     lots = (budget - rem) / lot_sizes

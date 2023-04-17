@@ -16,7 +16,7 @@ def total_equity(initial: float, total: float) -> float:
     return total
 
 
-def sqrt_profit(initial, total):
+def sqrt_profit(initial: float, total: float) -> float:
     """
     Money is a function of the sqrt of the capital growth rate.
     Partial reinvestment of profits guards against likelihood of

@@ -26,7 +26,6 @@ def test_backtest_long():
 
 
 def test_backtest_short():
-
     prices = pd.DataFrame([10, 15, 30], columns=["Acme"])
     weights = pd.DataFrame([-1, -1, -1], columns=["Acme"])
     result = bt.backtest(prices, weights)
@@ -35,7 +34,7 @@ def test_backtest_short():
     assert result.loc[(0, bt.CASH)]["end_portfolio"] == 2000
     assert result.loc[(0, "Acme")]["end_portfolio"] == -100
 
-    # Asset mark-to-market expsoure is negative
+    # Asset mark-to-market exposure is negative
     assert result.loc[(1, bt.CASH)][bt.EQUITY] == 2000
     assert result.loc[(1, "Acme")][bt.EQUITY] == -1500
 
@@ -45,7 +44,6 @@ def test_backtest_short():
 
 
 def test_backtest_tradetobuffer():
-
     prices = pd.DataFrame([100, 300, 300, 200, 200], columns=["Acme"])
     weights = pd.DataFrame([0.5, 1.25, -1, -2, 0], columns=["Acme"])
     result = bt.backtest(prices, weights, trade_buffer=0.25)
@@ -72,7 +70,6 @@ def test_backtest_tradetobuffer():
 
 
 def test_backtest_fundingrates():
-
     prices = pd.DataFrame([100, 100, 100, 100, 100], columns=["Acme"])
     weights = pd.DataFrame([1, 1, 1, -1, -1], columns=["Acme"])
     rates = pd.DataFrame([0.1, 0.1, -0.2, -0.2, -0.2], columns=["Acme"])
@@ -93,7 +90,6 @@ def test_backtest_fundingrates():
 
 
 def test_backtest_abs_fundingrates():
-
     prices = pd.DataFrame([100, 100, 100, 100, 100], columns=["Acme"])
     weights = pd.DataFrame([1, 1, 1, -1, -1], columns=["Acme"])
     rates = pd.DataFrame([-0.1, -0.1, -0.2, -0.2, -0.2], columns=["Acme"])
@@ -112,7 +108,6 @@ def test_backtest_abs_fundingrates():
 
 
 def test_backtest_commission():
-
     prices = pd.DataFrame([10, 15, 30], columns=["Acme"])
     weights = pd.DataFrame([0.5, 1, 0], columns=["Acme"])
 
@@ -155,7 +150,6 @@ def test_backtest_leverage_short():
 
 
 def test_quote_spread():
-
     mid = 10
     tar = 0.4
     f = 0.1

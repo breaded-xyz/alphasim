@@ -41,7 +41,6 @@ def backtest(
     short_f: float = 1,
     spread_f: float = 0,
 ) -> pd.DataFrame:
-
     # Validate args
     if len(prices) == 0:
         raise ValueError("prices length must be greater than 0")
@@ -70,7 +69,7 @@ def backtest(
 
     # Add asset to track cash balance
     prices[CASH] = 1
-    weights[CASH] = 0
+    weights[CASH] = np.NaN
     funding_rates[CASH] = 0
 
     # By default we allow partial shares to be
@@ -95,7 +94,6 @@ def backtest(
 
     # Step through periods in chronological order
     for i in range(periods):
-
         # Slice to get data for current period
         # Start port is initialized with the final positions from last period
         if i == 0:
@@ -127,7 +125,13 @@ def backtest(
 
         # Allocate to the portfolio using the latest target weights and quote price
         rebal = allocate(
-            capital, quote, equity, target_weight, trade_buffer, lot_sizes, short_f
+            capital,
+            quote,
+            equity,
+            target_weight,
+            trade_buffer,
+            lot_sizes,
+            short_f,
         )
         (
             start_weight,
@@ -160,7 +164,9 @@ def backtest(
 
         # Calc commission for the traded tickers using the given commission func
         commission = like(quote_qty)
-        commission[:] = [commission_func(x, y) for x, y in zip(base_qty, quote_qty)]
+        commission[:] = [
+            commission_func(float(x), float(y)) for x, y in zip(base_qty, quote_qty)
+        ]
 
         # Zero out cash values
         quote_qty[CASH] = 0
@@ -205,7 +211,6 @@ def backtest(
 
 
 def quote_spread(mid: float, target_weight: float, f: float) -> float:
-
     quote = mid
     spread = mid * f
     half = spread / 2
@@ -216,3 +221,8 @@ def quote_spread(mid: float, target_weight: float, f: float) -> float:
         quote -= half
 
     return quote
+
+
+def _zero_cash(x: pd.Series) -> pd.Series:
+    x[CASH] = 0
+    return x
