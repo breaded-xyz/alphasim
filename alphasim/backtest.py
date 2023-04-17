@@ -67,10 +67,8 @@ def backtest(
     if funding_rates.shape != weights.shape:
         raise ValueError("shape of funding_rates must match weights")
 
-    # Add asset to track cash balance
-    prices[CASH] = 1
-    weights[CASH] = np.NaN
-    funding_rates[CASH] = 0
+    # Track cash balance
+    cash = initial_capital
 
     # By default we allow partial shares to be
     # transacted in lots of size 1 in the quote currency.
@@ -82,10 +80,11 @@ def backtest(
 
     # Portfolio to record the units held of a ticker
     port = cast(pd.DataFrame, like(weights))
-    port.iloc[0][CASH] = initial_capital
 
-    # Final collated result
-    midx = pd.MultiIndex.from_product([weights.index, weights.columns])
+    # Final collated result for all assets and cash position
+    asset_list = weights.columns.tolist()
+    asset_list.append(CASH)
+    midx = pd.MultiIndex.from_product([weights.index, asset_list])
     result = pd.DataFrame(index=midx, columns=RESULT_KEYS)
     result[:] = 0
 
@@ -94,6 +93,8 @@ def backtest(
 
     # Step through periods in chronological order
     for i in range(periods):
+        start_cash = cash
+
         # Slice to get data for current period
         # Start port is initialized with the final positions from last period
         if i == 0:
@@ -106,7 +107,7 @@ def backtest(
 
         # Mark-to-market the portfolio
         equity = start_port * price
-        total = equity.sum()
+        total = equity.sum() + cash
 
         # Stop simulation if rekt
         if total <= 0:
@@ -146,13 +147,6 @@ def backtest(
         base_qty = fillnan(base_qty, 0)
         quote_qty = fillnan(quote_qty, 0)
 
-        # Zero out rebalance values for cash
-        target_weight[CASH] = 0
-        adj_target_weight[CASH] = 0
-        adj_delta_weight[CASH] = 0
-        base_qty[CASH] = 0
-        quote_qty[CASH] = 0
-
         # Support rotating portfolios by ignoring the buffer
         # and forcing liquidations on a zero target weight
         liquidate = start_port.abs().gt(0) & target_weight.eq(0)
@@ -174,22 +168,42 @@ def backtest(
             commission_func(float(x), float(y)) for x, y in zip(base_qty, quote_qty)
         ]
 
-        # zero out fees on cash
-        commission[CASH] = 0
-        funding_payment[CASH] = 0
-
-        # Update portfolio and cash positions
-        end_port = start_port.copy()
-        end_port += base_qty
-        end_port[CASH] += (
-            quote_qty.mul(-1).sum() + commission.sum() + funding_payment.sum()
-        )
-
         # Create mask to indicate if the asset is traded to aid later analysis
         is_trade = base_qty.abs().gt(0)
 
+        # Update portfolio
+        end_port = start_port.copy()
+        end_port += base_qty
+        port.iloc[i] = end_port
+
+        # Update cash position
+        cash = (
+            start_cash
+            + quote_qty.mul(-1).sum()
+            + commission.sum()
+            + funding_payment.sum()
+        )
+
+        # Record cash value results
+        price[CASH] = 1
+        start_port[CASH] = start_cash
+        equity[CASH] = start_cash
+        start_weight[CASH] = start_cash / capital
+        end_port[CASH] = cash
+
+        # Add empty value so arrays align for fast insertion to results
+        funding_rate[CASH] = None
+        target_weight[CASH] = None
+        adj_target_weight[CASH] = None
+        adj_delta_weight[CASH] = None
+        is_trade[CASH] = None
+        quote_qty[CASH] = None
+        base_qty[CASH] = None
+        funding_payment[CASH] = None
+        commission[CASH] = None
+
         # Append data for this time period to the result
-        period_result = np.array(
+        period_results = np.array(
             [
                 price,
                 funding_rate,
@@ -207,9 +221,7 @@ def backtest(
                 end_port,
             ]
         )
-        result.loc[weights.index[i]] = period_result.T
-
-        port.iloc[i] = end_port
+        result.loc[weights.index[i]] = period_results.T
 
     return result
 

@@ -43,6 +43,8 @@ def test_backtest_crypto():
         trading_days_year=365,
     )
 
+    assert result_stats.loc["ann_sharpe", "backtest"] == 1.067642894292224
+
     print(result_stats)
 
 
