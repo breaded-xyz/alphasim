@@ -221,8 +221,3 @@ def quote_spread(mid: float, target_weight: float, f: float) -> float:
         quote -= half
 
     return quote
-
-
-def _zero_cash(x: pd.Series) -> pd.Series:
-    x[CASH] = 0
-    return x
